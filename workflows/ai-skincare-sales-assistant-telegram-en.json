@@ -1,0 +1,476 @@
+{
+  "name": "ai-skincare-sales-assistant-telegram-en",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1504,
+        -128
+      ],
+      "id": "fe0308bc-423a-4318-ae64-fb25e237284c",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json || {};\nconst chatId = input.chatId;\nconst callbackQueryId = input.callbackQueryId || null;\nconst msg = String(input.msg || \"\").trim();\n\nlet savedSession = input.session || input.json?.session || input.data?.session || null;\nif (typeof savedSession === \"string\") {\n  try { savedSession = JSON.parse(savedSession); } catch { savedSession = null; }\n}\n\nconst store = $getWorkflowStaticData(\"global\");\nstore.orders = store.orders || {};\n\nconst PRODUCTS = [\n  {\n    id: \"p_cleanser_oily\",\n    name: \"Oil Control Facial Cleanser\",\n    category: \"Facial Cleanser\",\n    price: \"$14\",\n    stock: \"In stock\",\n    skinTypes: [\"oily\", \"combination\"],\n    concerns: [\"acne\", \"excess oil\", \"visible pores\"],\n    shortDescription: \"A gentle daily cleanser for oily skin without excessive drying.\",\n    benefits: [\"helps control oil\", \"cleans pores\", \"suitable for daily use\"],\n    usage: \"Massage onto damp skin morning and evening, then rinse.\",\n    notSuitableFor: \"Very dry or irritated skin\",\n    buyLink: \"https://example.com/products/oily-skin-cleanser\"\n  },\n  {\n    id: \"p_sunscreen_oily\",\n    name: \"Lightweight SPF 50 Sunscreen for Oily Skin\",\n    category: \"Sunscreen\",\n    price: \"$22\",\n    stock: \"In stock\",\n    skinTypes: [\"oily\", \"combination\"],\n    concerns: [\"excess oil\", \"dark spots\", \"daily protection\"],\n    shortDescription: \"A lightweight, fast-absorbing sunscreen for oily and combination skin.\",\n    benefits: [\"light texture\", \"helps reduce shine\", \"works well under makeup\"],\n    usage: \"Apply 15 minutes before sun exposure and reapply every 2–3 hours.\",\n    notSuitableFor: \"People sensitive to chemical sunscreens\",\n    buyLink: \"https://example.com/products/oily-skin-sunscreen-spf50\"\n  },\n  {\n    id: \"p_moist_dry\",\n    name: \"Hydrating Cream for Dry Skin\",\n    category: \"Moisturizer\",\n    price: \"$16\",\n    stock: \"In stock\",\n    skinTypes: [\"dry\", \"normal\"],\n    concerns: [\"dryness\", \"tightness\", \"flaking\"],\n    shortDescription: \"A daily moisturizer that helps reduce dryness and tightness.\",\n    benefits: [\"deep hydration\", \"helps reduce dryness\", \"comfortable texture\"],\n    usage: \"Apply morning and evening after cleansing.\",\n    notSuitableFor: \"Very oily skin\",\n    buyLink: \"https://example.com/products/dry-skin-moisturizer\"\n  },\n  {\n    id: \"p_serum_spot\",\n    name: \"Brightening Dark Spot Serum\",\n    category: \"Face Serum\",\n    price: \"$27\",\n    stock: \"In stock\",\n    skinTypes: [\"oily\", \"dry\", \"combination\", \"normal\"],\n    concerns: [\"dark spots\", \"uneven tone\", \"dullness\"],\n    shortDescription: \"A serum designed to help improve the appearance of superficial dark spots and dullness.\",\n    benefits: [\"supports a more even-looking tone\", \"helps reduce dullness\", \"suitable for evening routines\"],\n    usage: \"Use in the evening on clean skin and wear sunscreen the next day.\",\n    notSuitableFor: \"Irritated skin or open wounds\",\n    buyLink: \"https://example.com/products/brightening-serum\"\n  },\n  {\n    id: \"p_acne_serum\",\n    name: \"Acne Control Serum\",\n    category: \"Face Serum\",\n    price: \"$24\",\n    stock: \"In stock\",\n    skinTypes: [\"oily\", \"combination\"],\n    concerns: [\"acne\", \"breakouts\", \"excess oil\"],\n    shortDescription: \"A lightweight serum that helps manage superficial breakouts and excess oil.\",\n    benefits: [\"helps reduce breakouts\", \"supports oil control\", \"light texture\"],\n    usage: \"Apply a small amount in the evening to breakout-prone areas.\",\n    notSuitableFor: \"Very sensitive or inflamed skin\",\n    buyLink: \"https://example.com/products/acne-control-serum\"\n  },\n  {\n    id: \"p_sensitive_cream\",\n    name: \"Soothing Cream for Sensitive Skin\",\n    category: \"Face Cream\",\n    price: \"$18\",\n    stock: \"In stock\",\n    skinTypes: [\"sensitive\", \"dry\", \"normal\"],\n    concerns: [\"redness\", \"sensitivity\", \"dryness\"],\n    shortDescription: \"A gentle cream that helps soothe sensitive skin and reduce discomfort.\",\n    benefits: [\"gentle formula\", \"helps reduce the appearance of redness\", \"suitable for sensitive skin\"],\n    usage: \"Apply once or twice daily to clean skin.\",\n    notSuitableFor: \"Severely inflamed skin or open wounds\",\n    buyLink: \"https://example.com/products/sensitive-skin-cream\"\n  },\n  {\n    id: \"p_eye_cream\",\n    name: \"Hydrating Eye Cream\",\n    category: \"Eye Care\",\n    price: \"$20\",\n    stock: \"In stock\",\n    skinTypes: [\"dry\", \"normal\", \"combination\"],\n    concerns: [\"dry under-eyes\", \"fine lines\", \"tired-looking skin\"],\n    shortDescription: \"A lightweight eye cream for hydration and fine lines caused by dryness.\",\n    benefits: [\"hydrating\", \"light texture\", \"suitable for daily use\"],\n    usage: \"Apply a small amount morning and evening by gently tapping around the eye area.\",\n    notSuitableFor: \"Direct contact with the eyes\",\n    buyLink: \"https://example.com/products/hydrating-eye-cream\"\n  },\n  {\n    id: \"p_toner_pores\",\n    name: \"Pore-Cleansing Toner\",\n    category: \"Toner\",\n    price: \"$13\",\n    stock: \"In stock\",\n    skinTypes: [\"oily\", \"combination\"],\n    concerns: [\"visible pores\", \"excess oil\", \"acne\"],\n    shortDescription: \"A lightweight toner for extra cleansing and oil-control support.\",\n    benefits: [\"extra cleansing\", \"helps control oil\", \"suitable after cleansing\"],\n    usage: \"Apply after cleansing with clean hands or a cotton pad.\",\n    notSuitableFor: \"Very dry or sensitive skin\",\n    buyLink: \"https://example.com/products/pore-toner\"\n  }\n];\n\nfunction response(chatId, text, replyMarkup, session, callbackQueryId = null) {\n  return [{ json: { chatId, text, replyMarkup, session, callbackQueryId } }];\n}\nfunction responseWithAI(chatId, aiPrompt, replyMarkup, session, callbackQueryId = null) {\n  return [{ json: { chatId, useAI: true, aiPrompt, replyMarkup, session, callbackQueryId } }];\n}\nfunction norm(v) {\n  return String(v || \"\").toLowerCase().trim().replace(/[^a-z0-9\\s-]/g, \" \").replace(/\\s+/g, \" \");\n}\nfunction productText(p) {\n  return [p.name, p.category, p.shortDescription, ...(p.skinTypes||[]), ...(p.concerns||[]), ...(p.benefits||[]), p.usage, p.notSuitableFor].join(\" \");\n}\nfunction productBlock(p) {\n  return `\nName: ${p.name}\nCategory: ${p.category}\nPrice: ${p.price}\nStock: ${p.stock}\nSuitable for: ${p.skinTypes.join(\", \")}\nHelps with: ${p.concerns.join(\", \")}\nDescription: ${p.shortDescription}\nBenefits: ${p.benefits.join(\", \")}\nUsage: ${p.usage}\nNot suitable for: ${p.notSuitableFor}\nProduct URL: ${p.buyLink}\n`;\n}\nfunction findProductById(id) { return PRODUCTS.find(p => p.id === id); }\nfunction orderCode() { return `SKN-${Math.floor(1000 + Math.random() * 9000)}`; }\n\nfunction mainMenu() {\n  return { inline_keyboard: [\n    [{ text: \"🧴 Product consultation\", callback_data: \"consulting\" }],\n    [{ text: \"📦 Track order\", callback_data: \"track_order\" }, { text: \"🛒 Create test order\", callback_data: \"start_order\" }],\n    [{ text: \"ℹ️ About this demo\", callback_data: \"about_demo\" }]\n  ]};\n}\nfunction consultingMenu() {\n  return { inline_keyboard: [\n    [{ text: \"🔍 Ask about a product\", callback_data: \"product_info\" }],\n    [{ text: \"💆 Recommendations by skin type\", callback_data: \"skin_type_advice\" }],\n    [{ text: \"🩺 Recommendations by concern\", callback_data: \"skin_problem_advice\" }],\n    [{ text: \"🔙 Main menu\", callback_data: \"back_to_main\" }]\n  ]};\n}\nfunction skinTypesMenu() {\n  return { inline_keyboard: [\n    [{ text: \"Oily\", callback_data: \"skin_oily\" }, { text: \"Dry\", callback_data: \"skin_dry\" }],\n    [{ text: \"Combination\", callback_data: \"skin_combination\" }, { text: \"Sensitive\", callback_data: \"skin_sensitive\" }],\n    [{ text: \"I don't know my skin type\", callback_data: \"skin_unknown\" }],\n    [{ text: \"🔙 Back\", callback_data: \"consulting\" }]\n  ]};\n}\nfunction problemsMenu() {\n  return { inline_keyboard: [\n    [{ text: \"Acne / breakouts\", callback_data: \"problem_acne\" }, { text: \"Dark spots\", callback_data: \"problem_spot\" }],\n    [{ text: \"Dryness\", callback_data: \"problem_dryness\" }, { text: \"Excess oil\", callback_data: \"problem_oiliness\" }],\n    [{ text: \"Redness / sensitivity\", callback_data: \"problem_sensitive\" }, { text: \"Fine lines\", callback_data: \"problem_lines\" }],\n    [{ text: \"🔙 Back\", callback_data: \"consulting\" }]\n  ]};\n}\nfunction backMenu() {\n  return { inline_keyboard: [\n    [{ text: \"🔙 Back to consultation\", callback_data: \"consulting\" }],\n    [{ text: \"🏠 Main menu\", callback_data: \"back_to_main\" }]\n  ]};\n}\nfunction productActions(id) {\n  return { inline_keyboard: [\n    [{ text: \"🛒 Order this product\", callback_data: `order_${id}` }],\n    [{ text: \"💬 Ask about this product\", callback_data: `ask_${id}` }],\n    [{ text: \"🔙 Back\", callback_data: \"consulting\" }]\n  ]};\n}\nfunction orderBack() {\n  return { inline_keyboard: [[{ text: \"Cancel and return to main menu\", callback_data: \"back_to_main\" }]] };\n}\nfunction orderConfirm() {\n  return { inline_keyboard: [\n    [{ text: \"✅ Confirm order\", callback_data: \"confirm_order\" }],\n    [{ text: \"✏️ Edit details\", callback_data: \"edit_order\" }],\n    [{ text: \"❌ Cancel order\", callback_data: \"cancel_order\" }]\n  ]};\n}\n\nfunction scoreProduct(p, q) {\n  const query = norm(q);\n  const text = norm(productText(p));\n  let score = 0;\n  const aliases = {\n    \"sunscreen\": [\"spf\", \"sun protection\"],\n    \"moisturizer\": [\"hydrating\", \"hydration\", \"dry skin\"],\n    \"cleanser\": [\"wash\", \"cleansing\", \"face wash\"],\n    \"acne\": [\"breakout\", \"pimple\", \"oily skin\"],\n    \"dark spot\": [\"pigmentation\", \"uneven tone\", \"brightening\"],\n    \"sensitive\": [\"redness\", \"irritation\"],\n    \"toner\": [\"pores\", \"pore\"]\n  };\n  const terms = [query];\n  for (const [k, vals] of Object.entries(aliases)) {\n    if (query.includes(k) || vals.some(v => query.includes(v))) terms.push(k, ...vals);\n  }\n  for (const term of terms) {\n    if (term && text.includes(term)) score += 5;\n    for (const w of norm(term).split(\" \").filter(x => x.length > 2)) if (text.includes(w)) score += 1;\n  }\n  return score;\n}\nfunction findProducts(q) {\n  return PRODUCTS.map(p => ({p, s: scoreProduct(p,q)})).filter(x => x.s > 0).sort((a,b)=>b.s-a.s).map(x=>x.p);\n}\nfunction bySkinType(type) { return PRODUCTS.filter(p => p.skinTypes.includes(type)).slice(0,3); }\nfunction byConcern(concern) {\n  const map = {\n    \"acne\": [\"acne\",\"breakouts\",\"excess oil\"],\n    \"dark spots\": [\"dark spots\",\"uneven tone\",\"dullness\"],\n    \"dryness\": [\"dryness\",\"tightness\",\"flaking\"],\n    \"excess oil\": [\"excess oil\",\"visible pores\"],\n    \"sensitivity\": [\"redness\",\"sensitivity\",\"dryness\"],\n    \"fine lines\": [\"fine lines\",\"dry under-eyes\"]\n  };\n  const terms = map[concern] || [concern];\n  return PRODUCTS.map(p => {\n    const t = norm(productText(p));\n    let s=0; for (const x of terms) if (t.includes(norm(x))) s+=5;\n    return {p,s};\n  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).map(x=>x.p).slice(0,3);\n}\nfunction aiProductPrompt(p, q) {\n  return `You are a skincare store sales assistant.\n\nCustomer message:\n\"${q}\"\n\nProduct data:\n${productBlock(p)}\n\nRules:\n- Reply in natural, concise English.\n- Use only the product data above.\n- Do not invent products, prices, stock, URLs, ingredients, benefits, or claims.\n- Do not make medical diagnosis or guaranteed treatment claims.\n- If the customer describes a severe, painful, infected, persistent, or wounded skin condition, advise them to consult a qualified healthcare professional.\n- Keep the answer under 7 short lines.\n- Output only the customer-facing message.`;\n}\nfunction aiAdvicePrompt(label, products) {\n  return `You are a skincare store sales assistant.\n\nCustomer need:\n${label}\n\nAvailable products:\n${products.map((p,i)=>`Product ${i+1}:\\n${productBlock(p)}`).join(\"\\n\")}\n\nRules:\n- Reply in natural, concise English.\n- Recommend at most 3 products from the list.\n- Briefly explain why each may fit.\n- Use only the data provided.\n- Do not invent products, prices, stock, URLs, ingredients, benefits, or medical claims.\n- For severe, painful, infected, persistent, or wounded conditions, advise consulting a qualified healthcare professional.\n- Keep the answer under 10 short lines.\n- Output only the customer-facing message.`;\n}\nfunction aiQuestionPrompt(p, q) {\n  return `You are a skincare store sales assistant.\n\nProduct:\n${productBlock(p)}\n\nCustomer question:\n\"${q}\"\n\nRules:\n- Answer only about this product.\n- Use only the information above.\n- Do not invent ingredients, benefits, prices, stock, URLs, or medical claims.\n- Keep the answer under 7 short lines.\n- Output only the customer-facing message.`;\n}\n\nif (!chatId) return response(\"\", \"Error: chatId was not received.\", undefined, {}, callbackQueryId);\n\nconst s = savedSession || { step: \"MAIN_MENU\", temp: {}, hasStarted: false };\ns.temp = s.temp || {};\n\nfunction welcome() {\n  return `Hi 👋\nWelcome to the AI Skincare Sales Assistant demo.\n\nYou can:\n• ask about products\n• get recommendations based on skin type or concern\n• create a test order\n• track a test order\n\nWhat would you like to do?`;\n}\n\nif (!s.hasStarted || [\"/start\",\"start\",\"hello\",\"hi\",\"back_to_main\"].includes(msg.toLowerCase())) {\n  s.hasStarted = true; s.step = \"MAIN_MENU\"; s.temp = {};\n  return response(chatId, welcome(), mainMenu(), s, callbackQueryId);\n}\n\nif (msg === \"consulting\") {\n  s.step = \"CONSULTING_MENU\"; s.temp = {};\n  return response(chatId, \"Choose how you'd like to get product guidance:\", consultingMenu(), s, callbackQueryId);\n}\nif (msg === \"about_demo\") {\n  s.step = \"MAIN_MENU\"; s.temp = {};\n  return response(chatId,\n`About this demo\n\nThis is a proof-of-concept AI sales and customer-support assistant for skincare stores.\n\nA production version can be connected to WooCommerce, product databases, Google Sheets, CRM systems, or other business tools.\n\nContact:\nYOUR_CONTACT_INFO`, mainMenu(), s, callbackQueryId);\n}\nif (msg === \"product_info\") {\n  s.step = \"WAITING_PRODUCT_NAME\";\n  return response(chatId, \"Tell me the product or need you're looking for.\\n\\nExamples:\\nSunscreen for oily skin\\nMoisturizer for dry skin\\nAcne serum\\nDark spots\", backMenu(), s, callbackQueryId);\n}\nif (msg === \"skin_type_advice\") {\n  s.step = \"WAITING_SKIN_TYPE\";\n  return response(chatId, \"Select your skin type:\", skinTypesMenu(), s, callbackQueryId);\n}\nif (msg === \"skin_problem_advice\") {\n  s.step = \"WAITING_SKIN_PROBLEM\";\n  return response(chatId, \"Select your main skin concern:\", problemsMenu(), s, callbackQueryId);\n}\nif (msg === \"start_order\") {\n  s.step = \"WAITING_ORDER_PRODUCT\"; s.temp = {};\n  return response(chatId, \"Type the product you'd like to order.\\n\\nExample: sunscreen, moisturizer, acne serum\", orderBack(), s, callbackQueryId);\n}\nif (msg === \"track_order\") {\n  s.step = \"WAITING_ORDER_TRACKING\"; s.temp = {};\n  return response(chatId, \"Send your test order code or phone number.\\n\\nFor a quick demo, try: SKN-1001\", orderBack(), s, callbackQueryId);\n}\n\nif (s.step === \"WAITING_PRODUCT_NAME\") {\n  const product = findProducts(msg)[0];\n  if (!product) return response(chatId, `I couldn't find a matching demo product for \"${msg}\". Try sunscreen, moisturizer, cleanser, acne, dark spots, or toner.`, backMenu(), s, callbackQueryId);\n  s.step = \"CONSULTING_MENU\"; s.temp.selectedProductId = product.id; s.temp.lastSuggestedProductId = product.id;\n  return responseWithAI(chatId, aiProductPrompt(product,msg), productActions(product.id), s, callbackQueryId);\n}\n\nif (msg.startsWith(\"ask_\")) {\n  const p = findProductById(msg.replace(\"ask_\",\"\"));\n  if (!p) return response(chatId,\"Product not found.\",consultingMenu(),s,callbackQueryId);\n  s.step = \"WAITING_PRODUCT_QUESTION\"; s.temp.selectedProductId = p.id; s.temp.lastSuggestedProductId = p.id;\n  return response(chatId, `Ask your question about \"${p.name}\".`, backMenu(), s, callbackQueryId);\n}\nif (s.step === \"WAITING_PRODUCT_QUESTION\") {\n  const p = findProductById(s.temp.selectedProductId || s.temp.lastSuggestedProductId);\n  if (!p) return response(chatId,\"Please select the product again.\",consultingMenu(),s,callbackQueryId);\n  s.step = \"CONSULTING_MENU\";\n  return responseWithAI(chatId, aiQuestionPrompt(p,msg), productActions(p.id), s, callbackQueryId);\n}\n\nconst skinMap = { skin_oily:\"oily\", skin_dry:\"dry\", skin_combination:\"combination\", skin_sensitive:\"sensitive\" };\nif (skinMap[msg]) {\n  const type = skinMap[msg], products = bySkinType(type);\n  s.step = \"CONSULTING_MENU\";\n  if (products[0]) { s.temp.selectedProductId=products[0].id; s.temp.lastSuggestedProductId=products[0].id; }\n  return responseWithAI(chatId, aiAdvicePrompt(`${type} skin`,products), backMenu(), s, callbackQueryId);\n}\nif (msg === \"skin_unknown\") {\n  s.step = \"WAITING_SKIN_DISCOVERY\";\n  return response(chatId, \"Which description fits best?\\n\\n1. Gets oily or shiny quickly\\n2. Often feels tight or dry\\n3. Oily in some areas and dry in others\\n4. Gets red or irritated easily\", backMenu(), s, callbackQueryId);\n}\nif (s.step === \"WAITING_SKIN_DISCOVERY\") {\n  const a = norm(msg);\n  let type = a.startsWith(\"1\") ? \"oily\" : a.startsWith(\"2\") ? \"dry\" : a.startsWith(\"3\") ? \"combination\" : a.startsWith(\"4\") ? \"sensitive\" : null;\n  if (!type) return response(chatId,\"Please reply with 1, 2, 3, or 4.\",backMenu(),s,callbackQueryId);\n  const products = bySkinType(type);\n  s.step = \"CONSULTING_MENU\";\n  if (products[0]) { s.temp.selectedProductId=products[0].id; s.temp.lastSuggestedProductId=products[0].id; }\n  return responseWithAI(chatId, aiAdvicePrompt(`${type} skin`,products), backMenu(), s, callbackQueryId);\n}\n\nconst problemMap = {\n  problem_acne:\"acne\",\n  problem_spot:\"dark spots\",\n  problem_dryness:\"dryness\",\n  problem_oiliness:\"excess oil\",\n  problem_sensitive:\"sensitivity\",\n  problem_lines:\"fine lines\"\n};\nif (problemMap[msg]) {\n  const concern = problemMap[msg], products = byConcern(concern);\n  s.step = \"CONSULTING_MENU\";\n  if (products[0]) { s.temp.selectedProductId=products[0].id; s.temp.lastSuggestedProductId=products[0].id; }\n  if (!products.length) return response(chatId,\"No matching demo product was found.\",backMenu(),s,callbackQueryId);\n  return responseWithAI(chatId, aiAdvicePrompt(concern,products), backMenu(), s, callbackQueryId);\n}\n\nif (msg.startsWith(\"order_\")) {\n  const p = findProductById(msg.replace(\"order_\",\"\"));\n  if (!p) return response(chatId,\"Product not found.\",consultingMenu(),s,callbackQueryId);\n  s.step = \"WAITING_ORDER_NAME\";\n  s.temp = { selectedProductId:p.id, selectedProductName:p.name, lastSuggestedProductId:p.id };\n  return response(chatId, `Test order for:\\n${p.name}\\n\\nPlease enter your full name.`, orderBack(), s, callbackQueryId);\n}\n\nif (s.step === \"WAITING_ORDER_PRODUCT\") {\n  const p = findProducts(msg)[0];\n  if (!p) return response(chatId,\"I couldn't find that demo product. Try sunscreen, moisturizer, cleanser, or serum.\",orderBack(),s,callbackQueryId);\n  s.step=\"WAITING_ORDER_NAME\"; s.temp={selectedProductId:p.id,selectedProductName:p.name,lastSuggestedProductId:p.id};\n  return response(chatId, `Selected:\\n${p.name}\\nPrice: ${p.price}\\n\\nPlease enter your full name.`, orderBack(), s, callbackQueryId);\n}\nif (s.step === \"WAITING_ORDER_NAME\") {\n  if (msg.length < 2) return response(chatId,\"Please enter a valid name.\",orderBack(),s,callbackQueryId);\n  s.temp.customerName=msg; s.step=\"WAITING_ORDER_PHONE\";\n  return response(chatId,\"Please enter your phone number.\",orderBack(),s,callbackQueryId);\n}\nif (s.step === \"WAITING_ORDER_PHONE\") {\n  const phone = msg.replace(/\\s+/g,\"\");\n  if (!/^\\+?[0-9]{8,15}$/.test(phone)) return response(chatId,\"Please enter a valid phone number including country code when needed.\",orderBack(),s,callbackQueryId);\n  s.temp.customerPhone=phone; s.step=\"WAITING_ORDER_ADDRESS\";\n  return response(chatId,\"Please enter a test delivery address.\",orderBack(),s,callbackQueryId);\n}\nif (s.step === \"WAITING_ORDER_ADDRESS\") {\n  if (msg.length < 5) return response(chatId,\"Please enter a more complete address.\",orderBack(),s,callbackQueryId);\n  s.temp.customerAddress=msg; s.step=\"WAITING_ORDER_CONFIRMATION\";\n  return response(chatId,\n`Please review your test order:\n\nProduct: ${s.temp.selectedProductName}\nName: ${s.temp.customerName}\nPhone: ${s.temp.customerPhone}\nAddress: ${s.temp.customerAddress}`, orderConfirm(), s, callbackQueryId);\n}\nif (msg === \"confirm_order\") {\n  if (!s.temp.selectedProductId || !s.temp.customerName || !s.temp.customerPhone || !s.temp.customerAddress) {\n    s.step=\"MAIN_MENU\"; s.temp={};\n    return response(chatId,\"Order information is incomplete. Please start again.\",mainMenu(),s,callbackQueryId);\n  }\n  const code = orderCode();\n  const order = {\n    code, chatId,\n    productId:s.temp.selectedProductId,\n    productName:s.temp.selectedProductName,\n    customerName:s.temp.customerName,\n    customerPhone:s.temp.customerPhone,\n    customerAddress:s.temp.customerAddress,\n    status:\"Received — awaiting review\",\n    createdAt:new Date().toISOString()\n  };\n  store.orders[code]=order;\n  s.step=\"MAIN_MENU\"; s.temp={};\n  return response(chatId, `Your test order has been created ✅\\n\\nOrder code: ${code}\\nProduct: ${order.productName}\\nStatus: ${order.status}\\n\\nUse \"Track order\" from the main menu to test tracking.`, mainMenu(), s, callbackQueryId);\n}\nif (msg === \"edit_order\") {\n  s.step=\"WAITING_ORDER_NAME\";\n  return response(chatId,\"Let's update the details. Please enter your full name again.\",orderBack(),s,callbackQueryId);\n}\nif (msg === \"cancel_order\") {\n  s.step=\"MAIN_MENU\"; s.temp={};\n  return response(chatId,\"The test order was cancelled.\",mainMenu(),s,callbackQueryId);\n}\nif (s.step === \"WAITING_ORDER_TRACKING\") {\n  const q = msg.replace(/\\s+/g,\"\");\n  let found = store.orders[q] || Object.values(store.orders).find(o => o.customerPhone === q);\n  if (!found && q === \"SKN-1001\") {\n    found = { code:\"SKN-1001\", productName:\"Lightweight SPF 50 Sunscreen for Oily Skin\", status:\"Ready to ship\" };\n  }\n  if (!found) return response(chatId,\"No test order was found. Try SKN-1001.\",orderBack(),s,callbackQueryId);\n  s.step=\"MAIN_MENU\"; s.temp={};\n  return response(chatId, `Order status 📦\\n\\nOrder code: ${found.code}\\nProduct: ${found.productName}\\nStatus: ${found.status}\\nEstimated delivery: 2–3 business days`, mainMenu(), s, callbackQueryId);\n}\n\nif (![\"WAITING_ORDER_NAME\",\"WAITING_ORDER_PHONE\",\"WAITING_ORDER_ADDRESS\",\"WAITING_ORDER_CONFIRMATION\",\"WAITING_ORDER_TRACKING\"].includes(s.step)) {\n  const p = findProducts(msg)[0];\n  if (p) {\n    s.step=\"CONSULTING_MENU\"; s.temp.selectedProductId=p.id; s.temp.lastSuggestedProductId=p.id;\n    return responseWithAI(chatId, aiProductPrompt(p,msg), productActions(p.id), s, callbackQueryId);\n  }\n}\n\nreturn response(chatId,\n`I couldn't understand that message.\n\nTry:\n• sunscreen for oily skin\n• moisturizer for dry skin\n• acne serum\n\nOr choose an option from the menu.`, mainMenu(), s, callbackQueryId);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -112
+      ],
+      "id": "f5d62084-5aa2-4beb-a57f-423d5b7b46f1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5a283d52-8df7-4703-9f1a-3ca59f1e36dc",
+              "leftValue": "={{ $json.useAI }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -144,
+        32
+      ],
+      "id": "daa8d5c4-ed4c-4508-a00d-0be3b9c4acb2",
+      "name": "IF - Need AI?"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        496
+      ],
+      "id": "f887646d-8344-4778-b50a-59529a7084ff",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Code in JavaScript').first().json.aiPrompt }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        272,
+        256
+      ],
+      "id": "d3d90384-b2c7-472e-b04a-66d149409475",
+      "name": "AI - Product Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiText =\n  $json.text ||\n  $json.output ||\n  $json.response ||\n  $json.result ||\n  $json.message ||\n  $json.data ||\n  \"\";\n\nconst original = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: {\n      chatId: original.chatId,\n      text: String(aiText || \"متأسفم، الان نتونستم پاسخ مشاوره‌ای تولید کنم. لطفاً دوباره امتحان کن.\").trim(),\n      replyMarkup: original.replyMarkup,\n      session: original.session,\n      callbackQueryId: original.callbackQueryId,\n      aiRaw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -192
+      ],
+      "id": "133d9b1e-fe31-4aa8-8b34-d759c71273a7",
+      "name": "Code - Format AI Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: 'One moment please…' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        48
+      ],
+      "id": "6b5913db-5484-4b25-ad3b-b57d0332119e",
+      "name": "HTTP Request - Telegram Loading"
+    },
+    {
+      "parameters": {
+        "jsCode": "const update = $json || {};\nconst raw = update.body || update.data || update;\n\nconst chatId =\n  raw.chatId ||\n  raw.chat_id ||\n  raw.message?.chat?.id ||\n  raw.callback_query?.message?.chat?.id ||\n  raw.callbackQuery?.message?.chat?.id ||\n  raw.message?.from?.id ||\n  raw.callback_query?.from?.id ||\n  raw.callbackQuery?.from?.id ||\n  raw.chat?.id ||\n  raw.from?.id ||\n  null;\n\nconst callbackQueryId =\n  raw.callback_query?.id ||\n  raw.callbackQuery?.id ||\n  null;\n\nlet msg = String(\n  raw.text ??\n  raw.message?.text ??\n  raw.message?.caption ??\n  raw.callback_query?.data ??\n  raw.callbackQuery?.data ??\n  raw.data ??\n  \"\"\n).trim();\n\nif (!msg && chatId) msg = \"/start\";\nif (msg.toLowerCase() === \"start\") msg = \"/start\";\n\nreturn [\n  {\n    json: {\n      update: raw,\n      chatId,\n      userKey: chatId ? String(chatId) : \"\",\n      msg,\n      callbackQueryId\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1312,
+        -128
+      ],
+      "id": "6c4f379a-cbef-41cd-b33f-2866a5761b91",
+      "name": "Code - Normalize Input"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "telegram_bot_sessions",
+        "columns": {
+          "column": [
+            {
+              "name": "chatId"
+            },
+            {
+              "name": "session"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1520,
+        288
+      ],
+      "id": "dc3b5731-905a-47e3-a303-6e069066ead6",
+      "name": "telegram_sessions"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "telegram_bot_sessions"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=chatId",
+              "keyValue": "={{ $json.userKey }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        32
+      ],
+      "id": "a5076623-38b3-45c3-9770-80332867ca5d",
+      "name": "Data Table - Get Session",
+      "alwaysOutputData": true,
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "telegram_bot_sessions"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ String($json.chatId) }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatId": "={{ String($json.chatId) }}",
+            "session": "={{ JSON.stringify($json.session) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        -96
+      ],
+      "id": "32be5081-e191-4550-901a-c6b3c49800a1",
+      "name": "Data Table - Save Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: original\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -80
+      ],
+      "id": "86eada70-f665-4f03-a4ce-2198f63e34c8",
+      "name": "Code - Restore Bot Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalized = $('Code - Normalize Input').first().json;\nconst row = $json || {};\n\nlet savedSession = null;\n\n// اگر Data Table رکورد پیدا کرده باشد\nif (row.session) {\n  savedSession = row.session;\n}\n\n// اگر session به صورت متن ذخیره شده باشد\nif (typeof savedSession === \"string\") {\n  try {\n    savedSession = JSON.parse(savedSession);\n  } catch (e) {\n    savedSession = null;\n  }\n}\n\nreturn [\n  {\n    json: {\n      update: normalized.update,\n      chatId: normalized.chatId,\n      userKey: normalized.userKey,\n      msg: normalized.msg,\n      callbackQueryId: normalized.callbackQueryId,\n      session: savedSession\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -112
+      ],
+      "id": "6afac729-ba6e-4c0a-9664-3fb4c504040e",
+      "name": "Code - Merge Session Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Code - Restore Bot Output').first().json.chatId, text: $('Code - Restore Bot Output').first().json.text, reply_markup: $('Code - Restore Bot Output').first().json.replyMarkup }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        448
+      ],
+      "id": "387eb8b6-bfcb-4c2d-b6a2-7f794457e2ed",
+      "name": "HTTP Request - Telegram Normal Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Code - Format AI Response').first().json.chatId, text: $('Code - Format AI Response').first().json.text, reply_markup: $('Code - Format AI Response').first().json.replyMarkup }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "a2f0900a-d36e-4359-84e4-8d32e119a3c9",
+      "name": "HTTP Request - Telegram AI Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Need AI?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Telegram Loading",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Telegram Normal Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Product Reply": {
+      "main": [
+        [
+          {
+            "node": "Code - Format AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Format AI Response": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Telegram AI Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI - Product Reply",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Telegram Loading": {
+      "main": [
+        [
+          {
+            "node": "AI - Product Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Get Session": {
+      "main": [
+        [
+          {
+            "node": "Code - Merge Session Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Save Session": {
+      "main": [
+        [
+          {
+            "node": "Code - Restore Bot Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Restore Bot Output": {
+      "main": [
+        [
+          {
+            "node": "IF - Need AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Merge Session Input": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
