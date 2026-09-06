@@ -1,4 +1,3 @@
-````markdown
 # AI Skincare Sales Assistant with n8n
 
 This project is a demo AI-powered sales and customer support assistant for skincare and beauty stores.
@@ -95,7 +94,7 @@ Users can receive recommendations based on:
 
 The workflow includes a simple test-order flow:
 
-Product → Name → Phone → Address → Confirmation
+**Product → Name → Phone → Address → Confirmation**
 
 This functionality is included only to demonstrate how a sales workflow could be structured.
 
@@ -124,3 +123,39 @@ After importing the workflow into n8n:
 
 ```env
 BALE_BOT_TOKEN=YOUR_BALE_BOT_TOKEN
+```
+
+## Security
+
+The public version of this workflow does not contain real API keys, bot tokens, credential IDs, private Data Table IDs, or personal contact information.
+
+Never commit real credentials to a public repository.
+
+## Platform Adaptation
+
+This demo was originally built for **Bale Messenger** for the Persian market.
+
+The same workflow architecture can be adapted for other messaging channels such as:
+
+- Telegram
+- Website chat
+- WhatsApp integrations
+- Other messaging APIs
+
+The business logic, product recommendation system, and AI layer can remain largely the same while the messaging integration is replaced.
+
+## Disclaimer
+
+This project is intended as a demonstration of AI-assisted e-commerce automation.
+
+It does not provide medical diagnosis or professional skincare advice.
+
+For serious or persistent skin conditions, users should consult a qualified medical professional.
+
+## Author
+
+**Zahra Raeisi**
+
+AI Automation Specialist
+
+n8n • WordPress • WooCommerce • AI Agents • API Integrations
