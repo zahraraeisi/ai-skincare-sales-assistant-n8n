@@ -1,0 +1,497 @@
+{
+  "name": "demo-bale-ai-beauty-public",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-bale-messenger-alpha.baleMessengerTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        -128
+      ],
+      "id": "fe0308bc-423a-4318-ae64-fb25e237284c",
+      "name": "BaleMessenger Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// Beauty Support Demo Bot\n// Clean Demo Version + About Demo + Guided Free Consultation\n// ============================================\n\nconst input = $json || {};\nconst chatId = input.chatId;\nconst callbackQueryId = input.callbackQueryId || null;\nconst msg = String(input.msg || \"\").trim();\n\nlet savedSession = input.session || input.json?.session || input.data?.session || null;\n\nif (typeof savedSession === \"string\") {\n  try {\n    savedSession = JSON.parse(savedSession);\n  } catch {\n    savedSession = null;\n  }\n}\n\nconst store = $getWorkflowStaticData(\"global\");\nstore.orders = store.orders || {};\n\n// ============================================\n// Products\n// ============================================\n\nconst PRODUCTS = [\n  {\n    id: \"p_cleanser_oily\",\n    name: \"ژل شستشوی پوست چرب بیوتیا\",\n    category: \"شوینده صورت\",\n    price: \"۲۸۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"چرب\", \"مختلط\"],\n    concerns: [\"جوش\", \"چربی زیاد\", \"منافذ باز\"],\n    shortDescription: \"شوینده ملایم روزانه برای پاکسازی پوست چرب بدون ایجاد خشکی شدید.\",\n    benefits: [\"کنترل چربی\", \"پاکسازی منافذ\", \"مناسب استفاده روزانه\"],\n    usage: \"صبح و شب روی پوست مرطوب ماساژ داده و آبکشی شود.\",\n    notSuitableFor: \"پوست خیلی خشک یا تحریک‌شده\",\n    buyLink: \"https://example.com/products/oily-skin-cleanser\"\n  },\n  {\n    id: \"p_sunscreen_oily\",\n    name: \"ضدآفتاب سبک پوست چرب بیوتیا SPF50\",\n    category: \"ضدآفتاب\",\n    price: \"۴۸۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"چرب\", \"مختلط\"],\n    concerns: [\"چربی زیاد\", \"لک\", \"محافظت روزانه\"],\n    shortDescription: \"ضدآفتاب سبک با جذب سریع، مناسب پوست چرب و مختلط.\",\n    benefits: [\"بافت سبک\", \"کمک به کنترل براقیت\", \"مناسب زیر آرایش\"],\n    usage: \"۱۵ دقیقه قبل از خروج از خانه استفاده شود و هر ۲ تا ۳ ساعت تمدید شود.\",\n    notSuitableFor: \"افرادی که به ضدآفتاب‌های شیمیایی حساسیت دارند\",\n    buyLink: \"https://example.com/products/oily-skin-sunscreen-spf50\"\n  },\n  {\n    id: \"p_moist_dry\",\n    name: \"کرم آبرسان پوست خشک بیوتیا\",\n    category: \"آبرسان و مرطوب‌کننده\",\n    price: \"۳۲۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"خشک\", \"نرمال\"],\n    concerns: [\"خشکی\", \"کشیدگی پوست\", \"پوسته‌پوسته شدن\"],\n    shortDescription: \"کرم آبرسان روزانه برای کاهش حس خشکی و کشیدگی پوست.\",\n    benefits: [\"آبرسانی عمیق\", \"کاهش خشکی\", \"بافت نرم و راحت\"],\n    usage: \"صبح و شب بعد از شستشو روی پوست تمیز استفاده شود.\",\n    notSuitableFor: \"پوست خیلی چرب\",\n    buyLink: \"https://example.com/products/dry-skin-moisturizer\"\n  },\n  {\n    id: \"p_serum_spot\",\n    name: \"سرم روشن‌کننده و ضدلک بیوتیا\",\n    category: \"سرم صورت\",\n    price: \"۵۹۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"چرب\", \"خشک\", \"مختلط\", \"نرمال\"],\n    concerns: [\"لک\", \"تیرگی\", \"کدری پوست\"],\n    shortDescription: \"سرم کمکی برای کاهش ظاهر لک‌های سطحی و شفاف‌تر شدن پوست.\",\n    benefits: [\"کمک به یکنواخت شدن رنگ پوست\", \"کاهش کدری\", \"مناسب روتین شب\"],\n    usage: \"شب‌ها روی پوست تمیز استفاده شود و روز بعد ضدآفتاب فراموش نشود.\",\n    notSuitableFor: \"پوست تحریک‌شده یا دارای زخم باز\",\n    buyLink: \"https://example.com/products/brightening-serum\"\n  },\n  {\n    id: \"p_acne_serum\",\n    name: \"سرم کنترل جوش بیوتیا\",\n    category: \"سرم صورت\",\n    price: \"۵۲۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"چرب\", \"مختلط\"],\n    concerns: [\"جوش\", \"آکنه\", \"چربی زیاد\"],\n    shortDescription: \"سرم سبک برای کمک به کنترل جوش‌های سطحی و چربی پوست.\",\n    benefits: [\"کمک به کاهش جوش\", \"کنترل چربی\", \"بافت سبک\"],\n    usage: \"شب‌ها مقدار کم روی نواحی مستعد جوش استفاده شود.\",\n    notSuitableFor: \"پوست خیلی حساس یا ملتهب\",\n    buyLink: \"https://example.com/products/acne-control-serum\"\n  },\n  {\n    id: \"p_sensitive_cream\",\n    name: \"کرم آرام‌بخش پوست حساس بیوتیا\",\n    category: \"کرم مراقبتی\",\n    price: \"۳۸۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"حساس\", \"خشک\", \"نرمال\"],\n    concerns: [\"قرمزی\", \"حساسیت\", \"خشکی\"],\n    shortDescription: \"کرم ملایم برای کمک به آرام شدن پوست حساس و کاهش حس ناراحتی.\",\n    benefits: [\"فرمول ملایم\", \"کمک به کاهش قرمزی\", \"مناسب پوست حساس\"],\n    usage: \"روزانه ۱ تا ۲ بار روی پوست تمیز استفاده شود.\",\n    notSuitableFor: \"پوست دارای التهاب شدید یا زخم باز\",\n    buyLink: \"https://example.com/products/sensitive-skin-cream\"\n  },\n  {\n    id: \"p_eye_cream\",\n    name: \"کرم دور چشم آبرسان بیوتیا\",\n    category: \"مراقبت دور چشم\",\n    price: \"۴۴۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"خشک\", \"نرمال\", \"مختلط\"],\n    concerns: [\"خشکی دور چشم\", \"خطوط ریز\", \"خستگی پوست\"],\n    shortDescription: \"کرم سبک برای آبرسانی ناحیه دور چشم و کاهش ظاهر خطوط ریز ناشی از خشکی.\",\n    benefits: [\"آبرسان\", \"بافت سبک\", \"مناسب استفاده روزانه\"],\n    usage: \"صبح و شب مقدار کم با ضربه آرام دور چشم استفاده شود.\",\n    notSuitableFor: \"تماس مستقیم با داخل چشم\",\n    buyLink: \"https://example.com/products/hydrating-eye-cream\"\n  },\n  {\n    id: \"p_toner_pores\",\n    name: \"تونر پاک‌کننده منافذ بیوتیا\",\n    category: \"تونر\",\n    price: \"۲۶۰,۰۰۰ تومان\",\n    stock: \"موجود\",\n    skinTypes: [\"چرب\", \"مختلط\"],\n    concerns: [\"منافذ باز\", \"چربی زیاد\", \"جوش\"],\n    shortDescription: \"تونر سبک برای تکمیل پاکسازی و کمک به کنترل چربی پوست.\",\n    benefits: [\"پاکسازی تکمیلی\", \"کمک به کنترل چربی\", \"مناسب بعد از شستشو\"],\n    usage: \"بعد از شستشو با پد یا دست روی پوست استفاده شود.\",\n    notSuitableFor: \"پوست خیلی خشک یا حساس\",\n    buyLink: \"https://example.com/products/pore-toner\"\n  }\n];\n\n// ============================================\n// Helpers\n// ============================================\n\nfunction response(chatId, text, replyMarkup, session, callbackQueryId = null) {\n  return [{ json: { chatId, text, replyMarkup, session, callbackQueryId } }];\n}\n\nfunction responseWithAI(chatId, aiPrompt, replyMarkup, session, callbackQueryId = null) {\n  return [{ json: { chatId, useAI: true, aiPrompt, replyMarkup, session, callbackQueryId } }];\n}\n\nfunction normalizeText(text) {\n  return String(text || \"\")\n    .trim()\n    .toLowerCase()\n    .replace(/ي/g, \"ی\")\n    .replace(/ك/g, \"ک\")\n    .replace(/أ|إ|ٱ/g, \"ا\")\n    .replace(/آ/g, \"ا\")\n    .replace(/ۀ/g, \"ه\")\n    .replace(/ة/g, \"ه\")\n    .replace(/‌/g, \" \")\n    .replace(/[ًٌٍَُِّْ]/g, \"\")\n    .replace(/[^\\u0600-\\u06FFa-zA-Z0-9\\s]/g, \" \")\n    .replace(/\\s+/g, \" \");\n}\n\nfunction compactText(text) {\n  return normalizeText(text).replace(/\\s+/g, \"\");\n}\n\nfunction productSearchableText(product) {\n  return [\n    product.name,\n    product.category,\n    product.shortDescription,\n    ...(product.skinTypes || []),\n    ...(product.concerns || []),\n    ...(product.benefits || []),\n    product.usage,\n    product.notSuitableFor\n  ].join(\" \");\n}\n\nfunction productPromptBlock(product) {\n  return `\nنام: ${product.name}\nدسته‌بندی: ${product.category}\nقیمت: ${product.price}\nموجودی: ${product.stock}\nمناسب برای: ${product.skinTypes.join(\"، \")}\nکمک به: ${product.concerns.join(\"، \")}\nتوضیح کوتاه: ${product.shortDescription}\nویژگی‌ها: ${product.benefits.join(\"، \")}\nروش مصرف: ${product.usage}\nنامناسب برای: ${product.notSuitableFor}\nلینک خرید: ${product.buyLink}\n`;\n}\n\nfunction findProductById(productId) {\n  return PRODUCTS.find(p => p.id === productId);\n}\n\nfunction generateOrderCode() {\n  return `BTA-${Math.floor(1000 + Math.random() * 9000)}`;\n}\n\n// ============================================\n// Markups\n// ============================================\n\nfunction mainMenuMarkup() {\n  return {\n    inline_keyboard: [\n      [{ text: \"🧴 مشاوره خرید محصولات\", callback_data: \"consulting\" }],\n      [\n        { text: \"📦 پیگیری سفارش\", callback_data: \"track_order\" },\n        { text: \"🛒 ثبت سفارش تستی\", callback_data: \"start_order\" }\n      ],\n      [{ text: \"ℹ️ درباره این دمو\", callback_data: \"about_demo\" }]\n    ]\n  };\n}\n\nfunction consultingMenuMarkup() {\n  return {\n    inline_keyboard: [\n      [{ text: \"🔍 اطلاعات یک محصول خاص\", callback_data: \"product_info\" }],\n      [{ text: \"💆‍♀️ پیشنهاد بر اساس نوع پوست\", callback_data: \"skin_type_advice\" }],\n      [{ text: \"🩺 مشاوره مشکل پوستی\", callback_data: \"skin_problem_advice\" }],\n      [{ text: \"🔙 بازگشت به منوی اصلی\", callback_data: \"back_to_main\" }]\n    ]\n  };\n}\n\nfunction skinTypeMarkup() {\n  return {\n    inline_keyboard: [\n      [\n        { text: \"پوست چرب\", callback_data: \"skin_oily\" },\n        { text: \"پوست خشک\", callback_data: \"skin_dry\" }\n      ],\n      [\n        { text: \"پوست مختلط\", callback_data: \"skin_combination\" },\n        { text: \"پوست حساس\", callback_data: \"skin_sensitive\" }\n      ],\n      [{ text: \"نمی‌دونم نوع پوستم چیه\", callback_data: \"skin_unknown\" }],\n      [{ text: \"🔙 برگشت به مشاوره خرید\", callback_data: \"consulting\" }]\n    ]\n  };\n}\n\nfunction skinProblemMarkup() {\n  return {\n    inline_keyboard: [\n      [\n        { text: \"جوش و آکنه\", callback_data: \"problem_acne\" },\n        { text: \"لک و تیرگی\", callback_data: \"problem_spot\" }\n      ],\n      [\n        { text: \"خشکی پوست\", callback_data: \"problem_dryness\" },\n        { text: \"چربی زیاد\", callback_data: \"problem_oiliness\" }\n      ],\n      [\n        { text: \"قرمزی و حساسیت\", callback_data: \"problem_sensitive\" },\n        { text: \"خطوط ریز\", callback_data: \"problem_lines\" }\n      ],\n      [{ text: \"🔙 برگشت به مشاوره خرید\", callback_data: \"consulting\" }]\n    ]\n  };\n}\n\nfunction backToConsultingMarkup() {\n  return {\n    inline_keyboard: [\n      [{ text: \"🔙 برگشت به مشاوره خرید\", callback_data: \"consulting\" }],\n      [{ text: \"🏠 منوی اصلی\", callback_data: \"back_to_main\" }]\n    ]\n  };\n}\n\nfunction productActionMarkup(productId) {\n  return {\n    inline_keyboard: [\n      [{ text: \"🛒 ثبت سفارش این محصول\", callback_data: `order_${productId}` }],\n      [{ text: \"💬 سوال درباره این محصول\", callback_data: `ask_${productId}` }],\n      [{ text: \"🔙 برگشت به مشاوره خرید\", callback_data: \"consulting\" }]\n    ]\n  };\n}\n\nfunction orderBackMarkup() {\n  return {\n    inline_keyboard: [\n      [{ text: \"لغو و برگشت به منوی اصلی\", callback_data: \"back_to_main\" }]\n    ]\n  };\n}\n\nfunction orderConfirmMarkup() {\n  return {\n    inline_keyboard: [\n      [{ text: \"✅ تأیید سفارش\", callback_data: \"confirm_order\" }],\n      [{ text: \"✏️ اصلاح اطلاعات\", callback_data: \"edit_order\" }],\n      [{ text: \"❌ لغو سفارش\", callback_data: \"cancel_order\" }]\n    ]\n  };\n}\n\nfunction orderReviewText(session) {\n  return `لطفاً اطلاعات سفارش رو بررسی کن 🌸\n\nمحصول:\n${session.temp.selectedProductName}\n\nنام مشتری:\n${session.temp.customerName}\n\nشماره موبایل:\n${session.temp.customerPhone}\n\nآدرس:\n${session.temp.customerAddress}\n\nاگر اطلاعات درسته، سفارش رو تأیید کن.`;\n}\n\n// ============================================\n// Search + AI Prompts\n// ============================================\n\nfunction expandQuery(query) {\n  const q = normalizeText(query);\n  const compact = compactText(query);\n  const synonyms = [];\n\n  if (q.includes(\"ضد افتاب\") || q.includes(\"ضدافتاب\") || q.includes(\"ضد آفتاب\") || q.includes(\"افتاب\") || compact.includes(\"ضدافتاب\")) {\n    synonyms.push(\"ضدآفتاب\", \"ضد افتاب\", \"spf\", \"محافظت روزانه\");\n  }\n\n  if (q.includes(\"شوینده\") || q.includes(\"ژل\") || q.includes(\"شستشو\") || q.includes(\"صورت شوی\")) {\n    synonyms.push(\"ژل شستشو\", \"شوینده صورت\", \"پاکسازی\");\n  }\n\n  if (q.includes(\"جوش\") || q.includes(\"اکنه\") || q.includes(\"آکنه\")) {\n    synonyms.push(\"جوش\", \"آکنه\", \"کنترل جوش\", \"پوست چرب\");\n  }\n\n  if (q.includes(\"لک\") || q.includes(\"تیرگی\") || q.includes(\"روشن\")) {\n    synonyms.push(\"لک\", \"تیرگی\", \"روشن کننده\", \"ضدلک\");\n  }\n\n  if (q.includes(\"آبرسان\") || q.includes(\"اب رسان\") || q.includes(\"ابرسان\") || q.includes(\"مرطوب\") || q.includes(\"خشکی\")) {\n    synonyms.push(\"آبرسان\", \"مرطوب کننده\", \"خشکی\", \"پوست خشک\");\n  }\n\n  if (q.includes(\"تونر\") || q.includes(\"منافذ\")) {\n    synonyms.push(\"تونر\", \"منافذ\", \"پاک کننده منافذ\");\n  }\n\n  if (q.includes(\"حساس\") || q.includes(\"قرمزی\") || q.includes(\"التهاب\")) {\n    synonyms.push(\"حساس\", \"قرمزی\", \"آرام بخش\", \"پوست حساس\");\n  }\n\n  return [q, compact, ...synonyms.map(normalizeText), ...synonyms.map(compactText)].filter(Boolean);\n}\n\nfunction scoreProductByQuery(product, query) {\n  const queries = expandQuery(query);\n  const normalSearchable = normalizeText(productSearchableText(product));\n  const compactSearchable = compactText(productSearchableText(product));\n\n  let score = 0;\n\n  for (const q of queries) {\n    if (!q || q.length < 2) continue;\n\n    if (normalSearchable.includes(q)) score += 5;\n    if (compactSearchable.includes(q)) score += 5;\n\n    const words = normalizeText(q).split(\" \").filter(w => w.length >= 2);\n    for (const word of words) {\n      if (normalSearchable.includes(word)) score += 1;\n    }\n  }\n\n  return score;\n}\nfunction isSearchableBeautyMessage(text) {\n  const t = normalizeText(text);\n  const c = compactText(text);\n\n  const beautyKeywords = [\n    \"پوست\", \"صورت\", \"صورتم\",\n    \"ضد افتاب\", \"ضد آفتاب\", \"ضدافتاب\", \"افتاب\", \"spf\",\n    \"آبرسان\", \"ابرسان\", \"مرطوب\",\n    \"شوینده\", \"ژل\", \"تونر\", \"سرم\", \"کرم\",\n    \"جوش\", \"اکنه\", \"آکنه\",\n    \"لک\", \"تیرگی\",\n    \"خشک\", \"چرب\", \"حساس\", \"مختلط\",\n    \"منافذ\", \"قرمزی\", \"روتین\"\n  ];\n\n  return beautyKeywords.some(k => {\n    const nk = normalizeText(k);\n    const ck = compactText(k);\n    return t.includes(nk) || c.includes(ck);\n  });\n}\nfunction findProductsByQuery(query) {\n  if (!isSearchableBeautyMessage(query)) {\n    return [];\n  }\n\n  return PRODUCTS\n    .map(product => ({ product, score: scoreProductByQuery(product, query) }))\n    .filter(item => item.score > 0)\n    .sort((a, b) => b.score - a.score)\n    .map(item => item.product);\n}\n\nfunction findNearestProducts(query, limit = 3) {\n  if (!isSearchableBeautyMessage(query)) {\n    return [];\n  }\n\n  const scored = PRODUCTS\n    .map(product => ({ product, score: scoreProductByQuery(product, query) }))\n    .sort((a, b) => b.score - a.score);\n\n  const positive = scored.filter(item => item.score > 0).map(item => item.product);\n  return positive.length ? positive.slice(0, limit) : [];\n}\nfunction buildProductInfoAIPrompt(product, userQuery, isNearest = false) {\n  return `\nتو مشاور فروش یک فروشگاه محصولات مراقبت پوست هستی.\n\nکاربر این عبارت را نوشته:\n\"${userQuery}\"\n\n${isNearest ? \"محصول دقیق با این عبارت در دیتای تستی پیدا نشده. نزدیک‌ترین محصول پیشنهادی این است:\" : \"محصول پیدا شده:\"}\n\n${productPromptBlock(product)}\n\nقواعد پاسخ:\n- فارسی، طبیعی، کوتاه و فروشگاهی جواب بده.\n- اگر محصول دقیق پیدا نشده، اول خیلی کوتاه بگو «این مورد دقیقاً در لیست تستی نیست، اما نزدیک‌ترین پیشنهاد این محصوله».\n- قیمت، موجودی و لینک را دقیقاً از اطلاعات بالا بگو.\n- هیچ قیمت، موجودی، لینک، محصول یا ویژگی جدیدی نساز.\n- ادعای درمان قطعی نکن.\n- اگر مشکل پوستی شدید، دردناک، التهابی، عفونی، طولانی‌مدت یا همراه با زخم بود، توصیه کن با پزشک یا متخصص پوست مشورت کند.\n- حداکثر ۷ خط بنویس.\n- خروجی فقط متن پیام باشد.\n`;\n}\n\nfunction buildProductQuestionAIPrompt(product, userQuestion) {\n  return `\nتو مشاور فروش یک فروشگاه محصولات مراقبت پوست هستی.\n\nمحصولی که کاربر قبلاً درباره‌اش صحبت کرده:\n${productPromptBlock(product)}\n\nسوال جدید کاربر:\n\"${userQuestion}\"\n\nقواعد پاسخ:\n- جواب را دقیقاً درباره همین محصول بده.\n- فقط از اطلاعات محصول بالا استفاده کن.\n- اگر درباره استفاده روزانه پرسید، بر اساس روش مصرف و توضیحات محصول جواب بده.\n- اگر درباره مناسب بودن برای نوع پوست پرسید، فقط بر اساس مناسب برای و نامناسب برای جواب بده.\n- قیمت، موجودی و لینک را اگر لازم بود دقیقاً از اطلاعات بالا بگو.\n- هیچ ویژگی، قیمت، موجودی یا لینک جدیدی نساز.\n- ادعای درمان قطعی نکن.\n- اگر سوال درباره مشکل پوستی شدید، دردناک، التهابی یا طولانی‌مدت بود، توصیه کن با پزشک یا متخصص پوست مشورت کند.\n- حداکثر ۷ خط بنویس.\n- خروجی فقط متن پیام باشد.\n`;\n}\n\nfunction buildSkinTypeAdviceAIPrompt(skinType, products) {\n  return `\nتو مشاور فروش یک فروشگاه محصولات مراقبت پوست هستی.\n\nنوع پوست کاربر:\n${skinType}\n\nمحصولات پیشنهادی:\n${products.map((p, i) => `محصول ${i + 1}:\\n${productPromptBlock(p)}`).join(\"\\n\")}\n\nقواعد پاسخ:\n- فارسی، طبیعی، کوتاه و فروشگاهی جواب بده.\n- حداکثر ۳ محصول پیشنهاد بده.\n- برای هر محصول خیلی کوتاه بگو چرا مناسب است.\n- قیمت، موجودی و لینک را فقط از اطلاعات بالا بگو.\n- هیچ محصول، قیمت، لینک یا ویژگی جدیدی نساز.\n- ادعای درمان قطعی نکن.\n- حداکثر ۹ خط بنویس.\n- خروجی فقط متن پیام باشد.\n`;\n}\n\nfunction buildSkinProblemAdviceAIPrompt(problem, products) {\n  return `\nتو مشاور فروش یک فروشگاه محصولات مراقبت پوست هستی.\n\nمشکل پوستی کاربر:\n${problem}\n\nمحصولات مرتبط:\n${products.map((p, i) => `محصول ${i + 1}:\\n${productPromptBlock(p)}`).join(\"\\n\")}\n\nقواعد پاسخ:\n- فارسی، طبیعی، کوتاه و مشاوره‌ای جواب بده.\n- حداکثر ۳ محصول پیشنهاد بده.\n- برای هر محصول خیلی کوتاه بگو چرا مناسب است.\n- قیمت، موجودی و لینک را فقط از اطلاعات بالا بگو.\n- هیچ محصول، قیمت، لینک یا ویژگی جدیدی نساز.\n- ادعای درمان قطعی نکن.\n- اگر مشکل شدید، دردناک، التهابی، عفونی، طولانی‌مدت یا همراه با زخم بود، توصیه کن با پزشک یا متخصص پوست مشورت کند.\n- حداکثر ۹ خط بنویس.\n- خروجی فقط متن پیام باشد.\n`;\n}\n\nfunction buildFreeConsultationAIPrompt(userMessage, products) {\n  return `\nتو مشاور فروش یک فروشگاه محصولات مراقبت پوست هستی.\n\nپیام کاربر:\n\"${userMessage}\"\n\nمحصولات مرتبط:\n${products.map((p, i) => `محصول ${i + 1}:\\n${productPromptBlock(p)}`).join(\"\\n\")}\n\nقواعد پاسخ:\n- فارسی، طبیعی، کوتاه و فروشگاهی جواب بده.\n- اگر اطلاعات کافی داری، حداکثر ۳ محصول از لیست بالا پیشنهاد بده.\n- اگر اطلاعات کافی نیست، فقط یک سوال تکمیلی کوتاه بپرس.\n- قیمت، موجودی و لینک را فقط از اطلاعات بالا بگو.\n- هیچ محصول، قیمت، لینک یا ویژگی جدیدی نساز.\n- ادعای درمان قطعی نکن.\n- اگر مشکل شدید، دردناک، التهابی، عفونی، طولانی‌مدت یا همراه با زخم بود، توصیه کن با پزشک یا متخصص پوست مشورت کند.\n- حداکثر ۹ خط بنویس.\n- خروجی فقط متن پیام باشد.\n`;\n}\n\n// ============================================\n// Consulting Logic\n// ============================================\n\nconst problemMap = {\n  problem_acne: \"جوش و آکنه\",\n  problem_spot: \"لک و تیرگی\",\n  problem_dryness: \"خشکی پوست\",\n  problem_oiliness: \"چربی زیاد پوست\",\n  problem_sensitive: \"قرمزی و حساسیت\",\n  problem_lines: \"خطوط ریز و خشکی دور چشم\"\n};\n\nconst problemKeywordsMap = {\n  \"جوش و آکنه\": [\"جوش\", \"آکنه\", \"چربی زیاد\"],\n  \"لک و تیرگی\": [\"لک\", \"تیرگی\", \"کدری پوست\", \"محافظت روزانه\"],\n  \"خشکی پوست\": [\"خشکی\", \"کشیدگی پوست\", \"پوسته‌پوسته شدن\"],\n  \"چربی زیاد پوست\": [\"چربی زیاد\", \"منافذ باز\"],\n  \"قرمزی و حساسیت\": [\"قرمزی\", \"حساسیت\", \"خشکی\"],\n  \"خطوط ریز و خشکی دور چشم\": [\"خطوط ریز\", \"خشکی دور چشم\", \"خستگی پوست\"]\n};\n\nfunction findProductsByProblem(problem) {\n  const keywords = problemKeywordsMap[problem] || [problem];\n\n  return PRODUCTS.map(product => {\n    const searchable = normalizeText(productSearchableText(product));\n    let score = 0;\n\n    for (const keyword of keywords) {\n      const k = normalizeText(keyword);\n      if (searchable.includes(k)) score += 5;\n\n      const words = k.split(\" \").filter(w => w.length >= 2);\n      for (const word of words) {\n        if (searchable.includes(word)) score += 1;\n      }\n    }\n\n    return { product, score };\n  })\n    .filter(item => item.score > 0)\n    .sort((a, b) => b.score - a.score)\n    .map(item => item.product);\n}\n\nfunction isFreeConsultationMessage(text) {\n  const t = normalizeText(text);\n  if (!t || t.length < 4) return false;\n\n  const hasSkinWord =\n    t.includes(\"پوست\") ||\n    t.includes(\"صورتم\") ||\n    t.includes(\"صورت\") ||\n    t.includes(\"جوش\") ||\n    t.includes(\"اکنه\") ||\n    t.includes(\"آکنه\") ||\n    t.includes(\"لک\") ||\n    t.includes(\"تیرگی\") ||\n    t.includes(\"خشک\") ||\n    t.includes(\"چرب\") ||\n    t.includes(\"حساس\") ||\n    t.includes(\"قرمزی\") ||\n    t.includes(\"منافذ\") ||\n    t.includes(\"روتین\");\n\n  const hasAdviceIntent =\n    t.includes(\"چی\") ||\n    t.includes(\"چیکار\") ||\n    t.includes(\"چه کار\") ||\n    t.includes(\"پیشنهاد\") ||\n    t.includes(\"مناسب\") ||\n    t.includes(\"خوبه\") ||\n    t.includes(\"راهنمایی\") ||\n    t.includes(\"مشاوره\") ||\n    t.includes(\"به درد\") ||\n    t.includes(\"نیاز\") ||\n    t.includes(\"میخوام\") ||\n    t.includes(\"می خوام\") ||\n    t.includes(\"خراب\") ||\n    t.includes(\"بد\") ||\n    t.includes(\"مشکل\");\n\n  return hasSkinWord && hasAdviceIntent;\n}\n\nfunction isVagueBeautyMessage(text) {\n  const t = normalizeText(text);\n\n  const vaguePhrases = [\n    \"پوستم بده\",\n    \"پوستم بد شده\",\n    \"پوستم خیلی بد شده\",\n    \"پوستم خوب نیست\",\n    \"صورتم خراب شده\",\n    \"صورتم خوب نیست\",\n    \"پوستم مشکل داره\",\n    \"مشکل پوستی دارم\",\n    \"نمیدونم چی بزنم\",\n    \"نمی دونم چی بزنم\",\n    \"راهنمایی میخوام\",\n    \"راهنمایی می خوام\",\n    \"مشاوره میخوام\",\n    \"مشاوره می خوام\"\n  ];\n\n  return vaguePhrases.some(p => t.includes(normalizeText(p)));\n}\n\nfunction guidedNeedText() {\n  return `برای اینکه بهتر راهنماییت کنم، بگو بیشتر دنبال کدوم موردی؟ 🌸\n\n1. جوش و چربی پوست\n2. خشکی یا حساسیت\n3. لک و تیرگی\n4. انتخاب محصول مثل ضدآفتاب، آبرسان یا شوینده`;\n}\n\nfunction isProductOnlyRequest(text) {\n  const t = normalizeText(text);\n  const c = compactText(text);\n\n  const hasProduct =\n    t.includes(\"ضد افتاب\") ||\n    t.includes(\"ضد آفتاب\") ||\n    c.includes(\"ضدافتاب\") ||\n    t.includes(\"آبرسان\") ||\n    t.includes(\"ابرسان\") ||\n    t.includes(\"شوینده\") ||\n    t.includes(\"ژل\") ||\n    t.includes(\"تونر\") ||\n    t.includes(\"سرم\") ||\n    t.includes(\"کرم\");\n\n  const hasSkinOrConcern =\n    t.includes(\"چرب\") ||\n    t.includes(\"خشک\") ||\n    t.includes(\"حساس\") ||\n    t.includes(\"مختلط\") ||\n    t.includes(\"جوش\") ||\n    t.includes(\"لک\") ||\n    t.includes(\"تیرگی\") ||\n    t.includes(\"قرمزی\") ||\n    t.includes(\"منافذ\");\n\n  return hasProduct && !hasSkinOrConcern;\n}\n\nfunction productTypeClarificationText(text) {\n  const t = normalizeText(text);\n  const c = compactText(text);\n\n  if (t.includes(\"ضد افتاب\") || t.includes(\"ضد آفتاب\") || c.includes(\"ضدافتاب\")) {\n    return `برای اینکه ضدآفتاب مناسب‌تری پیشنهاد بدم، اول نوع پوستت رو بگو 🌸\n\n1. چرب یا مختلط\n2. خشک یا نرمال\n3. حساس\n4. نمی‌دونم`;\n  }\n\n  if (t.includes(\"آبرسان\") || t.includes(\"ابرسان\") || t.includes(\"کرم\")) {\n    return `برای اینکه آبرسان مناسب‌تری پیشنهاد بدم، اول نوع پوستت رو بگو 🌸\n\n1. چرب یا مختلط\n2. خشک یا نرمال\n3. حساس\n4. نمی‌دونم`;\n  }\n\n  return `برای اینکه محصول مناسب‌تری پیشنهاد بدم، اول نوع پوستت رو بگو 🌸\n\n1. چرب یا مختلط\n2. خشک یا نرمال\n3. حساس\n4. نمی‌دونم`;\n}\n\nfunction isFollowUpProductQuestion(text) {\n  const t = normalizeText(text);\n\n  const followUpWords = [\n    \"استفاده روزانه\",\n    \"روزانه\",\n    \"هر روز\",\n    \"چطور استفاده\",\n    \"چجوری استفاده\",\n    \"نحوه استفاده\",\n    \"روش مصرف\",\n    \"صبح\",\n    \"شب\",\n    \"زیر آرایش\",\n    \"قبل آرایش\",\n    \"برای پوست حساس\",\n    \"برای پوست خشک\",\n    \"برای پوست چرب\",\n    \"مناسبه\",\n    \"خوبه\",\n    \"ضرر\",\n    \"عوارض\",\n    \"چند بار\",\n    \"کی استفاده\",\n    \"میشه استفاده\",\n    \"می شه استفاده\",\n    \"چند وقت\",\n    \"چقدر بزنم\",\n    \"قبلش\",\n    \"بعدش\"\n  ];\n\n  return followUpWords.some(w => t.includes(normalizeText(w)));\n}\n\n// ============================================\n// Session\n// ============================================\n\nif (!chatId) {\n  return response(\"\", \"خطا: chatId دریافت نشد.\", undefined, {}, callbackQueryId);\n}\n\nconst s = savedSession || {\n  step: \"MAIN_MENU\",\n  temp: {},\n  hasStarted: false\n};\n\ns.temp = s.temp || {};\ns.hasStarted = Boolean(s.hasStarted);\n\nfunction welcomeMessage() {\n  return `سلام 🌸\nبه دموی مشاور هوشمند فروشگاه مراقبت پوست خوش اومدی.\n\nاینجا می‌تونی:\n• درباره محصولات سوال بپرسی\n• بر اساس نوع پوستت پیشنهاد بگیری\n• سفارش تستی ثبت کنی\n• وضعیت سفارش رو پیگیری کنی\n\nاز کدوم بخش شروع کنیم؟`;\n}\n\n// ============================================\n// Start + Main Menu\n// ============================================\n\nif (!s.hasStarted) {\n  s.hasStarted = true;\n  s.step = \"MAIN_MENU\";\n  s.temp = {};\n\n  return response(chatId, welcomeMessage(), mainMenuMarkup(), s, callbackQueryId);\n}\n\nif (\n  msg === \"/start\" ||\n  msg === \"start\" ||\n  msg === \"Start\" ||\n  msg === \"شروع\" ||\n  msg === \"سلام\" ||\n  msg === \"back_to_main\"\n) {\n  s.hasStarted = true;\n  s.step = \"MAIN_MENU\";\n  s.temp = {};\n\n  return response(chatId, welcomeMessage(), mainMenuMarkup(), s, callbackQueryId);\n}\n\nif (msg === \"consulting\") {\n  s.step = \"CONSULTING_MENU\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `خیلی خوب 🌸\nبرای راهنمایی بهتر، یکی از گزینه‌های زیر رو انتخاب کن.\n\nاگر اسم محصول خاصی مدنظرت هست، اطلاعاتش رو می‌گم.\nاگر هنوز مطمئن نیستی چی مناسبه، بر اساس نوع پوست یا مشکل پوستی راهنماییت می‌کنم.`,\n    consultingMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"track_order\") {\n  s.step = \"WAITING_ORDER_TRACKING\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `📦 برای پیگیری سفارش، کد سفارش یا شماره موبایل ثبت‌شده رو ارسال کن.\n\nبرای تست می‌تونی این کد رو بفرستی:\nBTA-1001`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"about_demo\") {\n  s.step = \"MAIN_MENU\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `ℹ️ درباره این دمو\n\nاین ربات یک نمونه آزمایشی از مشاور هوشمند فروش و پشتیبانی برای فروشگاه‌های آرایشی و مراقبت پوست است.\n\nدر نسخه واقعی، این سیستم می‌تواند بر اساس محصولات، سفارش‌ها و نیازهای هر فروشگاه شخصی‌سازی شود و به ابزارهایی مثل سایت، ووکامرس، فایل محصولات، Google Sheets یا CRM متصل شود.\n\nبرای مشاوره و سفارش نسخه اختصاصی، از راه‌های زیر می‌تونید در ارتباط باشید:\n\nشماره تماس / واتساپ / تلگرام / بله:\nYOUR_CONTACT_INFO`,\n    mainMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"start_order\") {\n  s.step = \"WAITING_ORDER_PRODUCT\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `🛒 برای ثبت سفارش تستی، اسم محصول موردنظرت رو بنویس.\n\nمثلاً:\nضدآفتاب\nآبرسان\nسرم ضدلک\nژل شستشو`,\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Consulting Menu\n// ============================================\n\nif (msg === \"product_info\") {\n  s.step = \"WAITING_PRODUCT_NAME\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `🔍 اسم محصول یا نیازت رو بنویس.\n\nمثلاً:\nضدآفتاب پوست چرب\nژل شستشو\nآبرسان پوست خشک\nجوش\nلک`,\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"skin_type_advice\") {\n  s.step = \"WAITING_SKIN_TYPE\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    \"💆‍♀️ نوع پوستت رو انتخاب کن تا چند محصول مناسب پیشنهاد بدم:\",\n    skinTypeMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"skin_problem_advice\") {\n  s.step = \"WAITING_SKIN_PROBLEM\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `🩺 بیشتر دنبال راهنمایی برای کدوم مورد هستی؟\n\nاگر مشکل پوستت شدید، دردناک، طولانی‌مدت یا همراه با التهاب زیاد هست، بهتره با پزشک یا متخصص پوست مشورت کنی.`,\n    skinProblemMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Product Info Flow\n// ============================================\n\nif (s.step === \"WAITING_PRODUCT_NAME\") {\n  if (isProductOnlyRequest(msg)) {\n    s.step = \"WAITING_PRODUCT_SKIN_TYPE\";\n    s.temp.pendingProductRequest = msg;\n\n    return response(\n      chatId,\n      productTypeClarificationText(msg),\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  const found = findProductsByQuery(msg);\n  const isNearest = found.length === 0;\n  const product = isNearest ? findNearestProducts(msg, 1)[0] : found[0];\n\n  if (!product) {\n    return response(\n      chatId,\n      `محصولی با عبارت «${msg}» پیدا نکردم 🌸\n\nبرای تست می‌تونی یکی از این عبارت‌ها رو بفرستی:\nضدآفتاب پوست چرب\nآبرسان پوست خشک\nژل شستشو\nجوش\nلک\nتونر`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  s.step = \"CONSULTING_MENU\";\n  s.temp.selectedProductId = product.id;\n  s.temp.lastSuggestedProductId = product.id;\n\n  return responseWithAI(\n    chatId,\n    buildProductInfoAIPrompt(product, msg, isNearest),\n    productActionMarkup(product.id),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Product Actions\n// ============================================\n\nif (msg.startsWith(\"order_\")) {\n  const productId = msg.replace(\"order_\", \"\");\n  const product = findProductById(productId);\n\n  if (!product) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp = {};\n    return response(chatId, \"محصول موردنظر پیدا نشد. لطفاً دوباره از بخش مشاوره خرید، محصول رو انتخاب کن.\", consultingMenuMarkup(), s, callbackQueryId);\n  }\n\n  s.step = \"WAITING_ORDER_NAME\";\n  s.temp = {\n    selectedProductId: product.id,\n    lastSuggestedProductId: product.id,\n    selectedProductName: product.name\n  };\n\n  return response(\n    chatId,\n    `عالیه 🌸\nبرای ثبت سفارش تستی این محصول:\n\n${product.name}\n\nلطفاً نام و نام خانوادگی رو وارد کن.`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg.startsWith(\"ask_\")) {\n  const productId = msg.replace(\"ask_\", \"\");\n  const product = findProductById(productId);\n\n  if (!product) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp = {};\n    return response(chatId, \"محصول موردنظر پیدا نشد. لطفاً دوباره از منوی مشاوره خرید اقدام کن.\", consultingMenuMarkup(), s, callbackQueryId);\n  }\n\n  s.step = \"WAITING_PRODUCT_QUESTION\";\n  s.temp = {\n    selectedProductId: product.id,\n    lastSuggestedProductId: product.id,\n    selectedProductName: product.name\n  };\n\n  return response(\n    chatId,\n    `سوالت درباره «${product.name}» رو بنویس 🌸\n\nمثلاً:\nبرای پوست جوش‌دار مناسبه؟\nزیر آرایش میشه استفاده کرد؟\nچطور باید استفاده کنم؟`,\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (s.step === \"WAITING_PRODUCT_QUESTION\") {\n  const product = findProductById(s.temp.selectedProductId || s.temp.lastSuggestedProductId);\n\n  if (!product) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp = {};\n    return response(chatId, \"محصول قبلی پیدا نشد. لطفاً دوباره از بخش مشاوره خرید، محصول رو انتخاب کن.\", consultingMenuMarkup(), s, callbackQueryId);\n  }\n\n  s.step = \"CONSULTING_MENU\";\n  s.temp.lastSuggestedProductId = product.id;\n\n  return responseWithAI(\n    chatId,\n    buildProductQuestionAIPrompt(product, msg),\n    productActionMarkup(product.id),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Skin Type / Problem Advice\n// ============================================\n\nconst skinTypeMap = {\n  skin_oily: \"چرب\",\n  skin_dry: \"خشک\",\n  skin_combination: \"مختلط\",\n  skin_sensitive: \"حساس\"\n};\n\nif (skinTypeMap[msg]) {\n  const selectedSkinType = skinTypeMap[msg];\n\n  s.step = \"WAITING_SKIN_TYPE_NEED\";\n  s.temp.skinType = selectedSkinType;\n\n  return response(\n    chatId,\n    `نوع پوستت ثبت شد: ${selectedSkinType} 🌸\n\nحالا بگو بیشتر دنبال چه چیزی هستی؟\n\n1. جوش و چربی پوست\n2. لک و تیرگی\n3. آبرسانی و رطوبت\n4. ضدآفتاب یا محافظت روزانه`,\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\nif (msg === \"skin_unknown\") {\n  s.step = \"WAITING_SKIN_DISCOVERY\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `اشکالی نداره 🌸\nبرای تشخیص تقریبی نوع پوست، فقط یکی از عددهای زیر رو بفرست:\n\n۱. زود چرب و براق میشه\n۲. کشیده و خشک میشه\n۳. بعضی قسمت‌ها چرب و بعضی خشک میشه\n۴. قرمز یا حساس میشه`,\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (s.step === \"WAITING_SKIN_DISCOVERY\") {\n  const answer = normalizeText(msg);\n  let guessedSkin = null;\n\n  if (answer.includes(\"1\") || answer.includes(\"۱\") || answer.includes(\"چرب\") || answer.includes(\"براق\")) guessedSkin = \"چرب\";\n  else if (answer.includes(\"2\") || answer.includes(\"۲\") || answer.includes(\"خشک\") || answer.includes(\"کشیده\")) guessedSkin = \"خشک\";\n  else if (answer.includes(\"3\") || answer.includes(\"۳\") || answer.includes(\"مختلط\") || answer.includes(\"بعضی\")) guessedSkin = \"مختلط\";\n  else if (answer.includes(\"4\") || answer.includes(\"۴\") || answer.includes(\"قرمز\") || answer.includes(\"حساس\")) guessedSkin = \"حساس\";\n\n  if (!guessedSkin) {\n    return response(chatId, \"برای تست، لطفاً فقط یکی از عددهای ۱، ۲، ۳ یا ۴ رو بفرست.\", backToConsultingMarkup(), s, callbackQueryId);\n  }\n\n  const matched = PRODUCTS.filter(p => p.skinTypes.includes(guessedSkin)).slice(0, 3);\n\n  s.step = \"CONSULTING_MENU\";\n  s.temp.skinType = guessedSkin;\n\n  if (matched.length > 0) {\n    s.temp.lastSuggestedProductId = matched[0].id;\n    s.temp.selectedProductId = matched[0].id;\n  }\n\n  return responseWithAI(\n    chatId,\n    buildSkinTypeAdviceAIPrompt(guessedSkin, matched),\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\nif (s.step === \"WAITING_SKIN_TYPE_NEED\") {\n  const answer = normalizeText(msg);\n  const skinType = s.temp.skinType;\n\n  let needText = \"\";\n\n  if (answer.includes(\"1\") || answer.includes(\"جوش\") || answer.includes(\"چربی\") || answer.includes(\"چرب\")) {\n    needText = \"جوش و آکنه\";\n  } else if (answer.includes(\"2\") || answer.includes(\"لک\") || answer.includes(\"تیرگی\")) {\n    needText = \"لک و تیرگی\";\n  } else if (answer.includes(\"3\") || answer.includes(\"آبرسان\") || answer.includes(\"رطوبت\") || answer.includes(\"خشکی\")) {\n    needText = \"خشکی پوست\";\n  } else if (answer.includes(\"4\") || answer.includes(\"ضدآفتاب\") || answer.includes(\"محافظت\")) {\n    needText = \"محافظت روزانه\";\n  }\n\n  if (!needText) {\n    return response(\n      chatId,\n      `لطفاً یکی از گزینه‌ها رو بفرست:\n\n1. جوش و چربی پوست\n2. لک و تیرگی\n3. آبرسانی و رطوبت\n4. ضدآفتاب یا محافظت روزانه`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  const finalQuery = `${skinType} ${needText}`;\n  const matched = findProductsByQuery(finalQuery).slice(0, 3);\n\n  s.step = \"CONSULTING_MENU\";\n\n  if (matched.length > 0) {\n    s.temp.lastSuggestedProductId = matched[0].id;\n    s.temp.selectedProductId = matched[0].id;\n\n    return responseWithAI(\n      chatId,\n      buildSkinProblemAdviceAIPrompt(`${needText} برای پوست ${skinType}`, matched),\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  return response(\n    chatId,\n    `برای این ترکیب فعلاً محصول دقیقی در لیست تستی پیدا نکردم 🌸`,\n    consultingMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\nif (problemMap[msg]) {\n  const selectedProblem = problemMap[msg];\n  const matched = findProductsByProblem(selectedProblem).slice(0, 3);\n\n  s.step = \"CONSULTING_MENU\";\n  s.temp.problem = selectedProblem;\n\n  if (matched.length === 0) {\n    return response(\n      chatId,\n      `برای مشکل «${selectedProblem}» فعلاً محصول مشخصی در لیست تستی پیدا نکردم 🌸\n\nاگر مشکل پوستی شدید یا طولانی‌مدت داری، بهتره با پزشک یا متخصص پوست مشورت کنی.`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  s.temp.lastSuggestedProductId = matched[0].id;\n  s.temp.selectedProductId = matched[0].id;\n\n  return responseWithAI(\n    chatId,\n    buildSkinProblemAdviceAIPrompt(selectedProblem, matched),\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Order Flow\n// ============================================\n\nif (s.step === \"WAITING_ORDER_PRODUCT\") {\n  const found = findProductsByQuery(msg);\n  const isNearest = found.length === 0;\n  const product = isNearest ? findNearestProducts(msg, 1)[0] : found[0];\n\n  if (!product) {\n    return response(\n      chatId,\n      `محصولی با عبارت «${msg}» برای ثبت سفارش پیدا نکردم.\n\nبرای تست، یکی از این‌ها رو بفرست:\nضدآفتاب\nآبرسان\nسرم ضدلک\nژل شستشو`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  s.step = \"WAITING_ORDER_NAME\";\n  s.temp = {\n    selectedProductId: product.id,\n    lastSuggestedProductId: product.id,\n    selectedProductName: product.name\n  };\n\n  return response(\n    chatId,\n    `${isNearest ? \"محصول دقیق پیدا نشد، اما نزدیک‌ترین پیشنهاد برای ثبت سفارش اینه:\" : \"محصول انتخاب شد:\"}\n\n${product.name}\nقیمت: ${product.price}\n\nلطفاً نام و نام خانوادگی رو وارد کن.`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (s.step === \"WAITING_ORDER_NAME\") {\n  if (msg.length < 3) {\n    return response(chatId, \"لطفاً نام و نام خانوادگی رو کمی کامل‌تر وارد کن.\", orderBackMarkup(), s, callbackQueryId);\n  }\n\n  s.temp.customerName = msg;\n  s.step = \"WAITING_ORDER_PHONE\";\n\n  return response(\n    chatId,\n    `ممنون 🌸\nحالا شماره موبایل رو وارد کن.\n\nمثلاً:\n09123456789`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (s.step === \"WAITING_ORDER_PHONE\") {\n  const phone = msg.replace(/\\s+/g, \"\");\n\n  if (!/^09\\d{9}$/.test(phone)) {\n    return response(chatId, \"شماره موبایل معتبر نیست. لطفاً به این شکل وارد کن:\\n09123456789\", orderBackMarkup(), s, callbackQueryId);\n  }\n\n  s.temp.customerPhone = phone;\n  s.step = \"WAITING_ORDER_ADDRESS\";\n\n  return response(chatId, \"عالیه 🌸\\nحالا آدرس کامل رو برای ثبت سفارش تستی وارد کن.\", orderBackMarkup(), s, callbackQueryId);\n}\n\nif (s.step === \"WAITING_ORDER_ADDRESS\") {\n  if (msg.length < 8) {\n    return response(chatId, \"لطفاً آدرس رو کمی کامل‌تر وارد کن.\", orderBackMarkup(), s, callbackQueryId);\n  }\n\n  s.temp.customerAddress = msg;\n  s.step = \"WAITING_ORDER_CONFIRMATION\";\n\n  return response(chatId, orderReviewText(s), orderConfirmMarkup(), s, callbackQueryId);\n}\n\nif (msg === \"confirm_order\") {\n  if (\n    !s.temp.selectedProductId ||\n    !s.temp.selectedProductName ||\n    !s.temp.customerName ||\n    !s.temp.customerPhone ||\n    !s.temp.customerAddress\n  ) {\n    s.step = \"MAIN_MENU\";\n    s.temp = {};\n    return response(chatId, \"اطلاعات سفارش کامل نیست. لطفاً دوباره ثبت سفارش رو شروع کن.\", mainMenuMarkup(), s, callbackQueryId);\n  }\n\n  const product = findProductById(s.temp.selectedProductId);\n  const orderCode = generateOrderCode();\n\n  const order = {\n    code: orderCode,\n    chatId,\n    productId: s.temp.selectedProductId,\n    productName: s.temp.selectedProductName,\n    customerName: s.temp.customerName,\n    customerPhone: s.temp.customerPhone,\n    customerAddress: s.temp.customerAddress,\n    status: \"ثبت شده و در انتظار بررسی\",\n    createdAt: new Date().toISOString()\n  };\n\n  store.orders[orderCode] = order;\n\n  s.step = \"MAIN_MENU\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    `سفارش تستی شما با موفقیت ثبت شد 🌸\n\nکد سفارش:\n${orderCode}\n\nمحصول:\n${order.productName}\n\nنام مشتری:\n${order.customerName}\n\nشماره موبایل:\n${order.customerPhone}\n\nوضعیت:\n${order.status}\n\nبرای پیگیری سفارش، از منوی اصلی گزینه «پیگیری سفارش» رو بزن و همین کد رو ارسال کن.\n\n${product ? \"لینک خرید تستی:\\n\" + product.buyLink : \"\"}`,\n    mainMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"edit_order\") {\n  if (!s.temp.selectedProductId) {\n    s.step = \"MAIN_MENU\";\n    s.temp = {};\n    return response(chatId, \"اطلاعات سفارش پیدا نشد. لطفاً دوباره ثبت سفارش رو شروع کن.\", mainMenuMarkup(), s, callbackQueryId);\n  }\n\n  s.step = \"WAITING_ORDER_NAME\";\n\n  return response(\n    chatId,\n    `باشه 🌸\nاطلاعات سفارش رو از اول اصلاح می‌کنیم.\n\nمحصول:\n${s.temp.selectedProductName}\n\nلطفاً نام و نام خانوادگی رو دوباره وارد کن.`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (msg === \"cancel_order\") {\n  s.step = \"MAIN_MENU\";\n  s.temp = {};\n\n  return response(\n    chatId,\n    \"سفارش لغو شد 🌸\\nهر وقت خواستی می‌تونی دوباره از منوی اصلی ثبت سفارش رو شروع کنی.\",\n    mainMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\nif (s.step === \"WAITING_ORDER_TRACKING\") {\n  const inputText = msg.replace(/\\s+/g, \"\");\n\n  let foundOrder = store.orders[inputText];\n\n  if (!foundOrder) {\n    foundOrder = Object.values(store.orders).find(order => order.customerPhone === inputText);\n  }\n\n  if (!foundOrder && inputText === \"BTA-1001\") {\n    foundOrder = {\n      code: \"BTA-1001\",\n      productName: \"ضدآفتاب سبک پوست چرب بیوتیا SPF50\",\n      customerName: \"مشتری تستی\",\n      customerPhone: \"09123456789\",\n      status: \"آماده ارسال\",\n      createdAt: new Date().toISOString()\n    };\n  }\n\n  if (foundOrder) {\n    s.step = \"MAIN_MENU\";\n    s.temp = {};\n\n    return response(\n      chatId,\n      `📦 وضعیت سفارش:\n\nکد سفارش:\n${foundOrder.code}\n\nمحصول:\n${foundOrder.productName}\n\nوضعیت:\n${foundOrder.status}\n\nزمان تقریبی تحویل:\n۲ تا ۳ روز کاری`,\n      mainMenuMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  return response(\n    chatId,\n    `سفارشی با این اطلاعات پیدا نشد 🌸\n\nاگر هنوز سفارش تستی ثبت نکردی، برای تست این کد رو بفرست:\nBTA-1001`,\n    orderBackMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Free / Smart Routing\n// ============================================\n\nconst orderSteps = [\n  \"WAITING_ORDER_PRODUCT\",\n  \"WAITING_ORDER_NAME\",\n  \"WAITING_ORDER_PHONE\",\n  \"WAITING_ORDER_ADDRESS\",\n  \"WAITING_ORDER_CONFIRMATION\",\n  \"WAITING_ORDER_TRACKING\"\n];\n\nconst isCallbackCommand =\n  msg.startsWith(\"order_\") ||\n  msg.startsWith(\"ask_\") ||\n  msg.startsWith(\"skin_\") ||\n  msg.startsWith(\"problem_\") ||\n  msg === \"consulting\" ||\n  msg === \"product_info\" ||\n  msg === \"skin_type_advice\" ||\n  msg === \"skin_problem_advice\" ||\n  msg === \"track_order\" ||\n  msg === \"start_order\" ||\n  msg === \"about_demo\" ||\n  msg === \"back_to_main\";\n\n// 1) Follow-up question about previous product\nif (\n  !orderSteps.includes(s.step) &&\n  !isCallbackCommand &&\n  s.temp?.lastSuggestedProductId &&\n  isFollowUpProductQuestion(msg)\n) {\n  const product = findProductById(s.temp.lastSuggestedProductId);\n\n  if (product) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp.selectedProductId = product.id;\n\n    return responseWithAI(\n      chatId,\n      buildProductQuestionAIPrompt(product, msg),\n      productActionMarkup(product.id),\n      s,\n      callbackQueryId\n    );\n  }\n}\n\n// 2) Product-only request: ask skin type first\nif (\n  !orderSteps.includes(s.step) &&\n  !isCallbackCommand &&\n  isProductOnlyRequest(msg)\n) {\n  s.step = \"WAITING_PRODUCT_SKIN_TYPE\";\n  s.temp.pendingProductRequest = msg;\n\n  return response(\n    chatId,\n    productTypeClarificationText(msg),\n    backToConsultingMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// 3) Answer to product skin type question\nif (s.step === \"WAITING_PRODUCT_SKIN_TYPE\") {\n  const answer = normalizeText(msg);\n  const originalRequest = s.temp.pendingProductRequest || \"\";\n\n  let skinText = \"\";\n\n  if (answer.includes(\"1\") || answer.includes(\"چرب\") || answer.includes(\"مختلط\")) {\n    skinText = \"پوست چرب یا مختلط\";\n  } else if (answer.includes(\"2\") || answer.includes(\"خشک\") || answer.includes(\"نرمال\")) {\n    skinText = \"پوست خشک یا نرمال\";\n  } else if (answer.includes(\"3\") || answer.includes(\"حساس\")) {\n    skinText = \"پوست حساس\";\n  } else if (answer.includes(\"4\") || answer.includes(\"نمیدونم\") || answer.includes(\"نمی دونم\")) {\n    return response(\n      chatId,\n      `اشکالی نداره 🌸\nبرای تست دمو، یکی از این گزینه‌ها رو انتخاب کن:\n\n1. پوستم زود چرب و براق میشه\n2. پوستم کشیده و خشک میشه\n3. پوستم سریع قرمز یا حساس میشه`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  if (!skinText) {\n    return response(\n      chatId,\n      `لطفاً یکی از گزینه‌ها رو بفرست:\n\n1. چرب یا مختلط\n2. خشک یا نرمال\n3. حساس\n4. نمی‌دونم`,\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  const finalQuery = `${originalRequest} ${skinText}`;\n  const found = findProductsByQuery(finalQuery);\n  const product = found[0];\n\n  if (product) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp.selectedProductId = product.id;\n    s.temp.lastSuggestedProductId = product.id;\n\n    return responseWithAI(\n      chatId,\n      buildProductInfoAIPrompt(product, finalQuery, false),\n      productActionMarkup(product.id),\n      s,\n      callbackQueryId\n    );\n  }\n\n  s.step = \"CONSULTING_MENU\";\n\n  return response(\n    chatId,\n    `برای این ترکیب، محصول دقیقی در لیست تستی پیدا نکردم 🌸\nمی‌تونی از بخش مشاوره خرید، مسیر نوع پوست یا مشکل پوستی رو انتخاب کنی.`,\n    consultingMenuMarkup(),\n    s,\n    callbackQueryId\n  );\n}\n\n// 4) Answer to vague beauty need\nif (s.step === \"WAITING_BEAUTY_NEED\") {\n  const userNeed = normalizeText(msg);\n  let mappedNeed = \"\";\n\n  if (userNeed.includes(\"1\") || userNeed.includes(\"جوش\") || userNeed.includes(\"چربی\") || userNeed.includes(\"چرب\")) {\n    mappedNeed = \"جوش و آکنه\";\n  } else if (userNeed.includes(\"2\") || userNeed.includes(\"خشکی\") || userNeed.includes(\"خشک\") || userNeed.includes(\"حساس\")) {\n    mappedNeed = \"خشکی پوست\";\n  } else if (userNeed.includes(\"3\") || userNeed.includes(\"لک\") || userNeed.includes(\"تیرگی\")) {\n    mappedNeed = \"لک و تیرگی\";\n  } else if (\n    userNeed.includes(\"4\") ||\n    userNeed.includes(\"ضدآفتاب\") ||\n    userNeed.includes(\"ضد افتاب\") ||\n    userNeed.includes(\"آبرسان\") ||\n    userNeed.includes(\"شوینده\") ||\n    userNeed.includes(\"ژل\") ||\n    userNeed.includes(\"تونر\") ||\n    userNeed.includes(\"سرم\")\n  ) {\n    s.step = \"WAITING_PRODUCT_SKIN_TYPE\";\n    s.temp.pendingProductRequest = msg;\n\n    return response(\n      chatId,\n      productTypeClarificationText(msg),\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  if (mappedNeed) {\n    const matched = findProductsByProblem(mappedNeed).slice(0, 3);\n    s.step = \"CONSULTING_MENU\";\n\n    if (matched.length > 0) {\n      s.temp.lastSuggestedProductId = matched[0].id;\n      s.temp.selectedProductId = matched[0].id;\n\n      return responseWithAI(\n        chatId,\n        buildSkinProblemAdviceAIPrompt(mappedNeed, matched),\n        backToConsultingMarkup(),\n        s,\n        callbackQueryId\n      );\n    }\n  }\n\n  return response(chatId, guidedNeedText(), backToConsultingMarkup(), s, callbackQueryId);\n}\n\n// 5) Free consultation\nif (!orderSteps.includes(s.step) && !isCallbackCommand && isFreeConsultationMessage(msg)) {\n  if (isVagueBeautyMessage(msg)) {\n    s.step = \"WAITING_BEAUTY_NEED\";\n    s.temp.freeConsultation = msg;\n\n    return response(chatId, guidedNeedText(), backToConsultingMarkup(), s, callbackQueryId);\n  }\n\n  const matched = findNearestProducts(msg, 3);\n\n  if (matched.length > 0) {\n    s.step = \"CONSULTING_MENU\";\n    s.temp.freeConsultation = msg;\n    s.temp.lastSuggestedProductId = matched[0].id;\n    s.temp.selectedProductId = matched[0].id;\n\n    return responseWithAI(\n      chatId,\n      buildFreeConsultationAIPrompt(msg, matched),\n      backToConsultingMarkup(),\n      s,\n      callbackQueryId\n    );\n  }\n\n  s.step = \"WAITING_BEAUTY_NEED\";\n  s.temp.freeConsultation = msg;\n\n  return response(chatId, guidedNeedText(), backToConsultingMarkup(), s, callbackQueryId);\n}\n\n// 6) Direct product search\nconst directProductSearch = findProductsByQuery(msg);\n\nif (\n  directProductSearch.length > 0 &&\n  !orderSteps.includes(s.step) &&\n  !isCallbackCommand\n) {\n  const product = directProductSearch[0];\n\n  s.step = \"CONSULTING_MENU\";\n  s.temp.selectedProductId = product.id;\n  s.temp.lastSuggestedProductId = product.id;\n\n  return responseWithAI(\n    chatId,\n    buildProductInfoAIPrompt(product, msg, false),\n    productActionMarkup(product.id),\n    s,\n    callbackQueryId\n  );\n}\n\n// ============================================\n// Fallback\n// ============================================\n\nreturn response(\n  chatId,\n  `متوجه منظورت نشدم 🌸\nمی‌تونی از منوی زیر یکی از گزینه‌ها رو انتخاب کنی یا اسم محصول/نیازت رو واضح‌تر بنویسی.\n\nمثلاً:\nضدآفتاب پوست چرب\nآبرسان پوست خشک\nپوستم جوش می‌زنه`,\n  mainMenuMarkup(),\n  s,\n  callbackQueryId\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -112
+      ],
+      "id": "f5d62084-5aa2-4beb-a57f-423d5b7b46f1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5a283d52-8df7-4703-9f1a-3ca59f1e36dc",
+              "leftValue": "={{ $json.useAI }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -144,
+        32
+      ],
+      "id": "daa8d5c4-ed4c-4508-a00d-0be3b9c4acb2",
+      "name": "IF - Need AI?"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        496
+      ],
+      "id": "f887646d-8344-4778-b50a-59529a7084ff",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Code in JavaScript').first().json.aiPrompt }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        272,
+        256
+      ],
+      "id": "d3d90384-b2c7-472e-b04a-66d149409475",
+      "name": "AI - Product Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiText =\n  $json.text ||\n  $json.output ||\n  $json.response ||\n  $json.result ||\n  $json.message ||\n  $json.data ||\n  \"\";\n\nconst original = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: {\n      chatId: original.chatId,\n      text: String(aiText || \"متأسفم، الان نتونستم پاسخ مشاوره‌ای تولید کنم. لطفاً دوباره امتحان کن.\").trim(),\n      replyMarkup: original.replyMarkup,\n      session: original.session,\n      callbackQueryId: original.callbackQueryId,\n      aiRaw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -192
+      ],
+      "id": "133d9b1e-fe31-4aa8-8b34-d759c71273a7",
+      "name": "Code - Format AI Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://tapi.bale.ai/bot' + $env.BALE_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\nJSON.stringify({\n  chat_id: $json.chatId,\n  text: \"چند لحظه لطفاً...🌸\"\n})\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        48
+      ],
+      "id": "6b5913db-5484-4b25-ad3b-b57d0332119e",
+      "name": "HTTP Request - Send Loading Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "const update = $json || {};\n\n// بعضی نودها خروجی را مستقیم می‌دهند، بعضی داخل body یا data\nconst raw = update.body || update.data || update;\n\n// گرفتن chatId از حالت‌های مختلف احتمالی\nconst chatId =\n  raw.chatId ||\n  raw.chat_id ||\n  raw.message?.chat?.id ||\n  raw.message?.from?.id ||\n  raw.callback_query?.message?.chat?.id ||\n  raw.callbackQuery?.message?.chat?.id ||\n  raw.callback_query?.from?.id ||\n  raw.callbackQuery?.from?.id ||\n  raw.chat?.id ||\n  raw.from?.id ||\n  raw.sender?.id ||\n  null;\n\n// گرفتن callbackQueryId\nconst callbackQueryId =\n  raw.callback_query?.id ||\n  raw.callbackQuery?.id ||\n  null;\n\n// گرفتن متن یا callback data\nlet msg = String(\n  raw.text ??\n  raw.message?.text ??\n  raw.message?.caption ??\n  raw.callback_query?.data ??\n  raw.callbackQuery?.data ??\n  raw.data ??\n  \"\"\n).trim();\n\n// اگر کاربر برای اولین بار Start زده ولی متن خالی رسیده، آن را مثل /start حساب کن\nif (!msg && chatId) {\n  msg = \"/start\";\n}\n\n// بعضی وقت‌ها بله ممکنه متن شروع را فارسی بفرستد\nif (msg === \"شروع\" || msg === \"Start\" || msg === \"start\") {\n  msg = \"/start\";\n}\n\nreturn [\n  {\n    json: {\n      update: raw,\n      chatId,\n      userKey: chatId ? String(chatId) : \"\",\n      msg,\n      callbackQueryId\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1312,
+        -128
+      ],
+      "id": "6c4f379a-cbef-41cd-b33f-2866a5761b91",
+      "name": "Code - Normalize Input"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "bale_bot_sessions",
+        "columns": {
+          "column": [
+            {
+              "name": "chatId"
+            },
+            {
+              "name": "session"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1520,
+        288
+      ],
+      "id": "dc3b5731-905a-47e3-a303-6e069066ead6",
+      "name": "bale_sessions"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "bale_bot_sessions"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=chatId",
+              "keyValue": "={{ $json.userKey }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        32
+      ],
+      "id": "a5076623-38b3-45c3-9770-80332867ca5d",
+      "name": "Data Table - Get Session",
+      "alwaysOutputData": true,
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "bale_bot_sessions"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ String($json.chatId) }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatId": "={{ String($json.chatId) }}",
+            "session": "={{ JSON.stringify($json.session) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        -96
+      ],
+      "id": "32be5081-e191-4550-901a-c6b3c49800a1",
+      "name": "Data Table - Save Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: original\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -80
+      ],
+      "id": "86eada70-f665-4f03-a4ce-2198f63e34c8",
+      "name": "Code - Restore Bot Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalized = $('Code - Normalize Input').first().json;\nconst row = $json || {};\n\nlet savedSession = null;\n\n// اگر Data Table رکورد پیدا کرده باشد\nif (row.session) {\n  savedSession = row.session;\n}\n\n// اگر session به صورت متن ذخیره شده باشد\nif (typeof savedSession === \"string\") {\n  try {\n    savedSession = JSON.parse(savedSession);\n  } catch (e) {\n    savedSession = null;\n  }\n}\n\nreturn [\n  {\n    json: {\n      update: normalized.update,\n      chatId: normalized.chatId,\n      userKey: normalized.userKey,\n      msg: normalized.msg,\n      callbackQueryId: normalized.callbackQueryId,\n      session: savedSession\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -112
+      ],
+      "id": "6afac729-ba6e-4c0a-9664-3fb4c504040e",
+      "name": "Code - Merge Session Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://tapi.bale.ai/bot' + $env.BALE_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=chat_id",
+              "value": "={{ $('Code - Restore Bot Output').first().json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Code - Restore Bot Output').first().json.text }}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ $('Code - Restore Bot Output').first().json.replyMarkup }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        448
+      ],
+      "id": "387eb8b6-bfcb-4c2d-b6a2-7f794457e2ed",
+      "name": "HTTP Request - Send Normal Message"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://tapi.bale.ai/bot' + $env.BALE_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=chat_id",
+              "value": "={{ $('Code - Format AI Response').first().json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Code - Format AI Response').first().json.text }}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ $('Code - Format AI Response').first().json.replyMarkup }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "a2f0900a-d36e-4359-84e4-8d32e119a3c9",
+      "name": "HTTP Request - Send AI Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "BaleMessenger Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Need AI?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Send Loading Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Send Normal Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Product Reply": {
+      "main": [
+        [
+          {
+            "node": "Code - Format AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Format AI Response": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Send AI Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI - Product Reply",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Send Loading Message": {
+      "main": [
+        [
+          {
+            "node": "AI - Product Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Get Session": {
+      "main": [
+        [
+          {
+            "node": "Code - Merge Session Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Save Session": {
+      "main": [
+        [
+          {
+            "node": "Code - Restore Bot Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Restore Bot Output": {
+      "main": [
+        [
+          {
+            "node": "IF - Need AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Merge Session Input": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
